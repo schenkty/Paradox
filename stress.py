@@ -13,6 +13,7 @@ parser = argparse.ArgumentParser(
     description="Stress test for NANO network. Sends 10 raw each to itself ")
 parser.add_argument('-n', '--num-accounts', type=int, help='Number of accounts', required=True)
 parser.add_argument('-s', '--size', type=int, help='Size of each transaction in RAW', default=10)
+parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=100)
 parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='xrb_1brainb3zz81wmhxndsbrjb94hx3fhr1fyydmg6iresyk76f3k7y7jiazoji')
 parser.add_argument('-tps', '--tps', type=int, help='Throttle transactions per second during processing. 0 (default) will not throttle.', default=0)
 parser.add_argument('-m', '--mode', type=str, help='define what mode you would like', required=True)
@@ -20,6 +21,8 @@ parser.add_argument('-nu', '--node_url', type=str, help='set node url', required
 parser.add_argument('-np', '--node_port', type=int, help='set node port', default=7076)
 parser.add_argument('-a', '--account', type=str, help='Account that will be used to spam', required=False)
 options = parser.parse_args()
+
+SAVE_EVERY_N = options.save_num
 
 # read json file and decode it
 def readJson(filename):
