@@ -365,6 +365,16 @@ def processAll():
     # send all blocks
     processSends()
 
+def buildAll():
+    # build all receive blocks
+    buildReceiveBlocks()
+    # build all send blocks
+    buildSendBlocks()
+
+def autoOnce():
+    buildAll()
+    processAll()
+
 # recover single account
 def recover(account):
     global keys
@@ -406,6 +416,8 @@ if options.mode == 'buildAccounts':
     buildAccounts()
 elif options.mode == 'seedAccounts':
     seedAccounts()
+elif options.mode == 'buildAll':
+    buildAll()
 elif options.mode == 'buildSend':
     buildSendBlocks()
 elif options.mode == 'buildReceive':
@@ -416,8 +428,9 @@ elif options.mode == 'processReceive':
     processReceives()
 elif options.mode == 'processAll':
     processAll()
+elif options.mode == 'autoOnce':
+    autoOnce()
 elif options.mode == 'recover':
     recover(options.account)
-    print(blocks['accounts'][options.account]['receive']['hash'])
 elif options.mode == 'recoverAll':
     recoverAll()
