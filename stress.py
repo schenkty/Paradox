@@ -31,6 +31,10 @@ def writeJson(filename, data):
     with open(filename, 'w') as json_file:
         json.dump(data, json_file)
 
+def saveBlocks():
+    writeJson('blocks.json', blocks)
+    print('\n(SAVE) Blocks have been written to blocks.json\n')
+
 # add a circuit breaker variable
 global signaled
 signaled = False
@@ -236,6 +240,7 @@ def seedAccounts():
         if i%SAVE_EVERY_N == 0:
             writeJson('blocks.json', blocks)
             print('\n(SAVE) Blocks have been written to blocks.json\n')
+    saveBlocks()
 
 def buildReceiveBlocks():
     global keys
@@ -248,19 +253,14 @@ def buildReceiveBlocks():
         account = x['account']
         key = x['key']
         blockObject = blocks['accounts'][account]
-        previous = ""
-        newBalance = 0
+        previous = '0'
+        newBalance = options.size
 
         if 'send' in blockObject:
             previous = blockObject["send"]["hash"]
-        else:
-            previous = '0'
 
         if i == 1:
-            balance = getInfo(account)['balance']
-            newBalance = str(int(balance) + int(options.size))
-        else:
-            newBalance = options.size
+            newBalance = getInfo(account)['balance']
 
         # build receive block
         block_out = generateBlock(key, account, newBalance, previous, account)
@@ -275,6 +275,7 @@ def buildReceiveBlocks():
         if i%SAVE_EVERY_N == 0:
             writeJson('blocks.json', blocks)
             print('\n(SAVE) Blocks have been written to blocks.json\n')
+    saveBlocks()
 
 def buildSendBlocks():
     global keys
@@ -309,6 +310,7 @@ def buildSendBlocks():
         if i%SAVE_EVERY_N == 0:
             writeJson('blocks.json', blocks)
             print('\n(SAVE) Blocks have been written to blocks.json\n')
+    saveBlocks()
 
 def processReceives():
     global keys
@@ -333,6 +335,7 @@ def processReceives():
         if options.tps != 0:
             while average_tps / (time.perf_counter() - start_process) > options.tps:
                 time.sleep(0.001)
+    saveBlocks()
 
 def processSends():
     global keys
@@ -351,13 +354,13 @@ def processSends():
         blocks['accounts'][x] = blockObject
 
         if i%SAVE_EVERY_N == 0:
-            writeJson('blocks.json', blocks)
-            print('\n(SAVE) Blocks have been written to blocks.json\n')
+            saveBlocks()
 
         # delay next process if --tps is not 0, to throttle outgoing
         if options.tps != 0:
             while average_tps / (time.perf_counter() - start_process) > options.tps:
                 time.sleep(0.001)
+    saveBlocks()
 
 def processAll():
     # receive all blocks
@@ -404,7 +407,7 @@ def recover(account):
     elif type == 'receive':
         blocks['accounts'][account]['receive']['hash'] = prev
     print(prev)
-    writeJson('blocks.json', blocks)
+    saveBlocks()
 
 # reset all saved hashes and grab head blocks
 def recoverAll():
@@ -412,27 +415,38 @@ def recoverAll():
         # set account
         account = x['account']
         recover(account)
-    writeJson('blocks.json', blocks)
+    saveBlocks()
 
 if options.mode == 'buildAccounts':
     buildAccounts()
+    saveBlocks()
 elif options.mode == 'seedAccounts':
     seedAccounts()
+    saveBlocks()
 elif options.mode == 'buildAll':
     buildAll()
+    saveBlocks()
 elif options.mode == 'buildSend':
     buildSendBlocks()
+    saveBlocks()
 elif options.mode == 'buildReceive':
     buildReceiveBlocks()
+    saveBlocks()
 elif options.mode == 'processSend':
     processSends()
+    saveBlocks()
 elif options.mode == 'processReceive':
     processReceives()
+    saveBlocks()
 elif options.mode == 'processAll':
     processAll()
+    saveBlocks()
 elif options.mode == 'autoOnce':
     autoOnce()
+    saveBlocks()
 elif options.mode == 'recover':
     recover(options.account)
+    saveBlocks()
 elif options.mode == 'recoverAll':
     recoverAll()
+    saveBlocks()

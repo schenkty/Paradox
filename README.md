@@ -2,6 +2,8 @@
 
 This is my Nano playground for basically anything that nano needs but doesn't have.
 
+all code in this repo is built in my personal time and not endorsed by BrainBlocks.
+
 ## stress testing
 
 1. install pycurl
