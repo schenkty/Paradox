@@ -7,13 +7,13 @@ import time
 import signal
 import os.path
 
-SAVE_EVERY_N = 100
+SAVE_EVERY_N = 10
 
 parser = argparse.ArgumentParser(
     description="Stress test for NANO network. Sends 10 raw each to itself ")
 parser.add_argument('-n', '--num-accounts', type=int, help='Number of accounts', required=True)
 parser.add_argument('-s', '--size', type=int, help='Size of each transaction in RAW', default=10)
-parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=100)
+parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=10)
 parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='xrb_1brainb3zz81wmhxndsbrjb94hx3fhr1fyydmg6iresyk76f3k7y7jiazoji')
 parser.add_argument('-tps', '--tps', type=int, help='Throttle transactions per second during processing. 0 (default) will not throttle.', default=0)
 parser.add_argument('-m', '--mode', type=str, help='define what mode you would like', required=True)
@@ -43,12 +43,8 @@ global signaled
 signaled = False
 
 # global vars
-# empty key array
-global keys
 keys = []
-global blocks
 blocks = {'accounts':{}}
-global balance
 balance = 0
 
 if os.path.exists('accounts.json'):
@@ -422,34 +418,26 @@ def recoverAll():
 
 if options.mode == 'buildAccounts':
     buildAccounts()
-    saveBlocks()
 elif options.mode == 'seedAccounts':
     seedAccounts()
-    saveBlocks()
 elif options.mode == 'buildAll':
     buildAll()
-    saveBlocks()
 elif options.mode == 'buildSend':
     buildSendBlocks()
-    saveBlocks()
 elif options.mode == 'buildReceive':
     buildReceiveBlocks()
-    saveBlocks()
 elif options.mode == 'processSend':
     processSends()
-    saveBlocks()
 elif options.mode == 'processReceive':
     processReceives()
-    saveBlocks()
 elif options.mode == 'processAll':
     processAll()
-    saveBlocks()
 elif options.mode == 'autoOnce':
     autoOnce()
-    saveBlocks()
 elif options.mode == 'recover':
     recover(options.account)
-    saveBlocks()
 elif options.mode == 'recoverAll':
     recoverAll()
-    saveBlocks()
+    
+# save all blocks
+saveBlocks()
