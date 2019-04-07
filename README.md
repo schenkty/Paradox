@@ -17,13 +17,23 @@ and building 10 nano accounts.
 
 ### modes
 buildAccounts - initial account/key pair setup and save
+
 seedAccounts - fund each account (real-time)
+
 buildSend - build all send blocks and save
+
 buildReceive - build all receive blocks and save
+
 buildAll - build all blocks for both receive and send and save
+
 processSend - process all send blocks
+
 processReceive - process all receive blocks
+
 processAll - process all blocks for both receive and send
+
 autoOnce - run through buildAll and processAll once
+
 recover - reset specific account's previous block
+
 recoverAll - reset all accounts
