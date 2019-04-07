@@ -38,6 +38,12 @@ def saveBlocks():
     writeJson('blocks.json', blocks)
     print('\n(SAVE) Blocks have been written to blocks.json\n')
 
+def tpsDelay():
+    # delay next process if --tps is not 0, to throttle outgoing
+    if options.tps != 0:
+        while average_tps / (time.perf_counter() - start_process) > options.tps:
+            time.sleep(0.001)
+
 # add a circuit breaker variable
 global signaled
 signaled = False
@@ -237,8 +243,7 @@ def seedAccounts():
         print("\nCreated block {0}".format(hash))
 
         if i%SAVE_EVERY_N == 0:
-            writeJson('blocks.json', blocks)
-            print('\n(SAVE) Blocks have been written to blocks.json\n')
+            saveBlocks()
     saveBlocks()
 
 def buildReceiveBlocks():
@@ -272,8 +277,7 @@ def buildReceiveBlocks():
         print("\nCreated block {0}".format(block_out['hash']))
 
         if i%SAVE_EVERY_N == 0:
-            writeJson('blocks.json', blocks)
-            print('\n(SAVE) Blocks have been written to blocks.json\n')
+            saveBlocks()
     saveBlocks()
 
 def buildSendBlocks():
@@ -307,8 +311,7 @@ def buildSendBlocks():
         print("\nCreated block {0}".format(block_out['hash']))
 
         if i%SAVE_EVERY_N == 0:
-            writeJson('blocks.json', blocks)
-            print('\n(SAVE) Blocks have been written to blocks.json\n')
+            saveBlocks()
     saveBlocks()
 
 def processReceives():
@@ -328,12 +331,8 @@ def processReceives():
         # update processed
         blocks['accounts'][x] = blockObject
         if i%SAVE_EVERY_N == 0:
-            writeJson('blocks.json', blocks)
-            print('\n(SAVE) Blocks have been written to blocks.json\n')
-        # delay next process if --tps is not 0, to throttle outgoing
-        if options.tps != 0:
-            while average_tps / (time.perf_counter() - start_process) > options.tps:
-                time.sleep(0.001)
+            saveBlocks()
+        tpsDelay()
     saveBlocks()
 
 def processSends():
@@ -355,10 +354,7 @@ def processSends():
         if i%SAVE_EVERY_N == 0:
             saveBlocks()
 
-        # delay next process if --tps is not 0, to throttle outgoing
-        if options.tps != 0:
-            while average_tps / (time.perf_counter() - start_process) > options.tps:
-                time.sleep(0.001)
+        tpsDelay()
     saveBlocks()
 
 def processAll():
@@ -438,6 +434,6 @@ elif options.mode == 'recover':
     recover(options.account)
 elif options.mode == 'recoverAll':
     recoverAll()
-    
+
 # save all blocks
 saveBlocks()
