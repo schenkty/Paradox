@@ -372,7 +372,9 @@ def buildAll():
     buildSendBlocks()
 
 def autoOnce():
+    # build all blocks
     buildAll()
+    # process all blocks
     processAll()
 
 # recover single account
