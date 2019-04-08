@@ -231,8 +231,7 @@ def seedAccounts():
         block_out = generateBlock(mainKey, account, adjustedbal, prev, destAccount)
 
         hash = process(block_out)["hash"]
-        blockObject = {'send': {'hash': hash}}
-        blocks['accounts'][destAccount] = blockObject
+        blocks['accounts'][destAccount] = {}
 
         # save block as previous
         prev = block_out["hash"]
