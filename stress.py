@@ -221,6 +221,8 @@ def seedAccounts():
     i = 0
     for x in keys:
         i = (i + 1)
+        if i == 1:
+            continue
         # create a blank destination account
         destAccount = x['account']
 
@@ -231,19 +233,20 @@ def seedAccounts():
         block_out = generateBlock(mainKey, account, adjustedbal, prev, destAccount)
 
         hash = process(block_out)["hash"]
-        blocks['accounts'][destAccount] = {}
+        blockObject = {'send': {'hash': hash}}
+        blocks['accounts'][destAccount] = blockObject
 
         # save block as previous
         prev = block_out["hash"]
 
         # process current block
         process(block_out)
-
+        print("Building Send Block {0}".format(i))
         print("\nCreated block {0}".format(hash))
 
         if i%SAVE_EVERY_N == 0:
             saveBlocks()
-    saveBlocks()
+    writeJson('blocks.json', blocks)
 
 def buildReceiveBlocks():
     global keys
@@ -252,32 +255,39 @@ def buildReceiveBlocks():
     i = 0
     for x in keys:
         i = (i + 1)
+        if i == 1:
+            continue
         # set account
         account = x['account']
         key = x['key']
         blockObject = blocks['accounts'][account]
         previous = '0'
+        prev = ''
         newBalance = options.size
 
         if 'send' in blockObject:
-            previous = blockObject["send"]["hash"]
+            prev = blockObject["send"]["hash"]
 
-        if i == 1:
-            newBalance = getInfo(account)['balance']
+            if 'block' in blockObject["send"]:
+                sendBal = json.loads(blockObject["send"]["block"])
+                newBalance = str(int(sendBal["balance"]) + options.size)
+
+        if 'receive' in blockObject:
+            previous = prev
 
         # build receive block
-        block_out = generateBlock(key, account, newBalance, previous, account)
+        block_out = generateBlock(key, account, newBalance, previous, prev)
         hash = block_out['hash']
         block = block_out["block"]
         receiveObject = {"hash":hash, "block":block, "processed":False}
         blockObject['receive'] = receiveObject
         blocks['accounts'][account] = blockObject
-
+        print("Building Receive Block {0}".format(i))
         print("\nCreated block {0}".format(block_out['hash']))
 
         if i%SAVE_EVERY_N == 0:
             saveBlocks()
-    saveBlocks()
+    writeJson('blocks.json', blocks)
 
 def buildSendBlocks():
     global keys
@@ -287,31 +297,33 @@ def buildSendBlocks():
     i = 0
     for x in keys:
         i = (i + 1)
+        if i == 1:
+            continue
         # set account
         account = x['account']
         key = x['key']
+        previous = '0'
         blockObject = blocks['accounts'][account]
-        prev = blockObject['receive']["hash"]
         newBalance = 0
 
-        if i == 1:
-            newBalance = getInfo(account)['balance']
-        else:
-            newBalance = options.size
+        if 'receive' in blockObject:
+            previous = blockObject['receive']["hash"]
+            receiveBal = json.loads(blockObject["receive"]["block"])
+            newBalance = str(int(receiveBal["balance"]) - options.size)
 
         # build send block
-        block_out = generateBlock(key, account, newBalance, prev, 'xrb_1jnatu97dka1h49zudxtpxxrho3j591jwu5bzsn7h1kzn3gwit4kejak756y')
+        block_out = generateBlock(key, account, newBalance, previous, account)
         hash = block_out['hash']
         block = block_out["block"]
         sendObject = {"hash":hash, "block":block, "processed":False}
         blockObject['send'] = sendObject
         blocks['accounts'][account] = blockObject
-
+        print("Building Send Block {0}".format(i))
         print("\nCreated block {0}".format(block_out['hash']))
 
         if i%SAVE_EVERY_N == 0:
             saveBlocks()
-    saveBlocks()
+    writeJson('blocks.json', blocks)
 
 def processReceives():
     global keys
@@ -324,7 +336,7 @@ def processReceives():
         blockObject = blocks['accounts'][x]
         block = blockObject['receive']
         blockObject['receive']['processed'] = True
-
+        print("block {0}".format(i))
         print("Processing block {0}".format(block['hash']))
         process(block)
         # update processed
@@ -332,7 +344,7 @@ def processReceives():
         if i%SAVE_EVERY_N == 0:
             saveBlocks()
         tpsDelay()
-    saveBlocks()
+    writeJson('blocks.json', blocks)
 
 def processSends():
     global keys
@@ -345,8 +357,9 @@ def processSends():
         blockObject = blocks['accounts'][x]
         block = blockObject['send']
         blockObject['send']['processed'] = True
+        print("block {0}".format(i))
         print("Processing block {0}".format(block['hash']))
-        print(process(block))
+        process(block)
         # update processed
         blocks['accounts'][x] = blockObject
 
@@ -354,7 +367,7 @@ def processSends():
             saveBlocks()
 
         tpsDelay()
-    saveBlocks()
+    writeJson('blocks.json', blocks)
 
 def processAll():
     # receive all blocks
@@ -400,8 +413,7 @@ def recover(account):
         blocks['accounts'][account]['send']['hash'] = prev
     elif type == 'receive':
         blocks['accounts'][account]['receive']['hash'] = prev
-    print(prev)
-    saveBlocks()
+    writeJson('blocks.json', blocks)
 
 # reset all saved hashes and grab head blocks
 def recoverAll():
@@ -409,7 +421,7 @@ def recoverAll():
         # set account
         account = x['account']
         recover(account)
-    saveBlocks()
+    writeJson('blocks.json', blocks)
 
 if options.mode == 'buildAccounts':
     buildAccounts()
@@ -435,4 +447,4 @@ elif options.mode == 'recoverAll':
     recoverAll()
 
 # save all blocks
-saveBlocks()
+writeJson('blocks.json', blocks)
