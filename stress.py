@@ -75,7 +75,7 @@ def tpsDelay():
     global current_tps
     global average_tps
     global start
-    global start_process 
+    global start_process
     # delay next process if --tps is not 0, to throttle outgoing
     if options.tps != 0:
         while average_tps / (time.perf_counter() - start_process) > options.tps:
@@ -220,7 +220,11 @@ def seedAccounts():
     info_out = getInfo(accountList[0])
 
     # set previous block
-    prev = info_out["frontier"]
+    if 'frontier' in info_out:
+        prev = info_out["frontier"]
+    else:
+        print("Account Not Found. Please Check that account funds are pending")
+        return
 
     # seed all accounts with test raw
     i = 0
