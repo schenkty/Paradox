@@ -39,12 +39,6 @@ def saveBlocks():
     writeJson('blocks.json', blocks)
     print('\n(SAVE) Blocks have been written to blocks.json\n')
 
-def tpsDelay():
-    # delay next process if --tps is not 0, to throttle outgoing
-    if options.tps != 0:
-        while average_tps / (time.perf_counter() - start_process) > options.tps:
-            time.sleep(0.001)
-
 # add a circuit breaker variable
 global signaled
 signaled = False
@@ -85,11 +79,13 @@ def communicateNode(rpc_command):
     parsed_json = json.loads(body.decode('iso-8859-1'))
     return parsed_json
 
+# takes key and returns the account
 def findAccount(key):
     for object in keys:
         if object['key'] == key:
             return object['account']
 
+# takes account and returns the key
 def findKey(account):
     for object in keys:
         if object['account'] == account:
@@ -105,9 +101,6 @@ def getPending(account):
 def getHistory(account):
     return communicateNode({'action':'account_history', 'account': account, 'count': '10', 'reverse': True})
 
-def accountBalance(account):
-    return communicateNode({'action': 'account_balance', 'account': account})
-
 def process(block):
     if 'block' in block:
         block = block['block']
@@ -118,14 +111,6 @@ def getInfo(account):
 
 def getBlockInfo(hash):
     return communicateNode({'action': 'block_info', 'hash': hash})
-
-def accountHistory(account):
-    response = communicateNode({'action': 'account_history', 'account':account, 'count':100})
-    history = response.history
-    if not history:
-        history = []
-
-    return history
 
 # validate if an address is the correct format
 def validate_address(address):
@@ -173,9 +158,6 @@ def receiveAllPending(key):
 
     for block in blocks:
         print(receive(key, account, block))
-
-    balance = accountBalance(account)
-    return balance['balance']
 
 def buildAccounts():
     global keys
@@ -344,7 +326,11 @@ def processReceives():
         blocks['accounts'][x] = blockObject
         if i%SAVE_EVERY_N == 0:
             saveBlocks()
-        tpsDelay()
+            
+        # delay next process if --tps is not 0, to throttle outgoing
+        if options.tps != 0:
+            while average_tps / (time.perf_counter() - start_process) > options.tps:
+                time.sleep(0.001)
     writeJson('blocks.json', blocks)
 
 def processSends():
@@ -367,7 +353,10 @@ def processSends():
         if i%SAVE_EVERY_N == 0:
             saveBlocks()
 
-        tpsDelay()
+        # delay next process if --tps is not 0, to throttle outgoing
+        if options.tps != 0:
+            while average_tps / (time.perf_counter() - start_process) > options.tps:
+                time.sleep(0.001)
     writeJson('blocks.json', blocks)
 
 def processAll():
