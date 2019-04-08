@@ -1,3 +1,4 @@
+# Ty Schenk 2019
 from io import BytesIO
 import json
 import pycurl
