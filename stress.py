@@ -44,12 +44,45 @@ global signaled
 signaled = False
 
 # global vars
-keys = []
+accounts = {'accounts':{}}
 blocks = {'accounts':{}}
-balance = 0
+
+# tps counters
+highest_tps = 0
+current_tps = 0
+average_tps = 0
+start = 0
+start_process = 0
+
+def tpsCalc():
+    global highest_tps
+    global current_tps
+    global average_tps
+    global start
+    global start_process
+    # calculate average_tps
+    average_tps = average_tps / (time.perf_counter() - start_process)
+
+    # print tps results
+    if highest_tps == 0:
+        highest_tps = 'N/A'
+    results = ("Average transactions per second: {0}\n" +
+           "Most transactions in 1 second: {1}").format(average_tps, highest_tps)
+    print(results)
+
+def tpsDelay():
+    global highest_tps
+    global current_tps
+    global average_tps
+    global start
+    global start_process 
+    # delay next process if --tps is not 0, to throttle outgoing
+    if options.tps != 0:
+        while average_tps / (time.perf_counter() - start_process) > options.tps:
+            time.sleep(0.001)
 
 if os.path.exists('accounts.json'):
-    keys = readJson('accounts.json')
+    accounts = readJson('accounts.json')
 
 if os.path.exists('blocks.json'):
     blocks = readJson('blocks.json')
@@ -78,18 +111,6 @@ def communicateNode(rpc_command):
     body = buffer.getvalue()
     parsed_json = json.loads(body.decode('iso-8859-1'))
     return parsed_json
-
-# takes key and returns the account
-def findAccount(key):
-    for object in keys:
-        if object['key'] == key:
-            return object['account']
-
-# takes account and returns the key
-def findKey(account):
-    for object in keys:
-        if object['account'] == account:
-            return object['key']
 
 # generate new key pair
 def getKeyPair():
@@ -160,60 +181,65 @@ def receiveAllPending(key):
         print(receive(key, account, block))
 
 def buildAccounts():
-    global keys
+    global accounts
     keyNum = options.num_accounts
 
     if os.path.exists('accounts.json'):
-        keys = readJson('accounts.json')
-        keyNum = (keyNum - len(keys))
+        accounts = readJson('accounts.json')
 
+    # check if we already have accounts
+    if len((list(accounts['accounts']))) > 0:
+        print("Can't Change Accounts")
+
+    i = 0
     for x in range(keyNum):
+        i = (i + 1)
         newKey = getKeyPair()
-        newKey = {'account': newKey['account'], 'key': newKey['private']}
-        keys.append(newKey)
+        accountObject = {'key': newKey['private'], 'seeded': False}
+        accounts['accounts'][newKey['account']] = accountObject
 
-    writeJson('accounts.json', keys)
-    first = keys[0]
-    account = first['account'];
-    print("Fund Account {0}".format(account))
+    writeJson('accounts.json', accounts)
+    print("Fund Account {0}".format(list(accounts['accounts'])[0]))
 
 def seedAccounts():
-    global keys
+    global accounts
     global blocks
     prev = None
 
-    # build our array of accounts and keys
-    buildAccounts()
-
     # pull first account/key pair object from keys array
-    first = keys[0]
-    account = first['account']
-    mainKey = first['key']
+    accountList = list(accounts['accounts'])
+    firstAccount = accountList[0]
+    firstObject = accounts['accounts'][firstAccount]
+    mainKey = firstObject['key']
 
     # amount of raw in each txn
     testSize = options.size
 
     # pull info for our account
     receiveAllPending(mainKey)
-    info_out = getInfo(account)
+    info_out = getInfo(accountList[0])
 
     # set previous block
     prev = info_out["frontier"]
 
     # seed all accounts with test raw
     i = 0
-    for x in keys:
+    for destAccount in accountList:
         i = (i + 1)
         if i == 1:
             continue
-        # create a blank destination account
-        destAccount = x['account']
+
+        seeded = accounts['accounts'][destAccount]['seeded']
+
+        if seeded == True:
+            print("Account has already been seeded")
+            continue
 
         # calculate the state block balance
         adjustedbal = str(int(info_out['balance']) - options.size * (i + 1))
 
         # build receive block
-        block_out = generateBlock(mainKey, account, adjustedbal, prev, destAccount)
+        block_out = generateBlock(mainKey, firstAccount, adjustedbal, prev, destAccount)
 
         hash = process(block_out)["hash"]
         blockObject = {'send': {'hash': hash}}
@@ -224,7 +250,11 @@ def seedAccounts():
 
         # process current block
         process(block_out)
-        print("Building Send Block {0}".format(i))
+
+        # set seeded to true for destAccount
+        accounts['accounts'][destAccount]['seeded'] = True
+
+        print("Building Send Block {0}".format((i-1)))
         print("\nCreated block {0}".format(hash))
 
         if i%SAVE_EVERY_N == 0:
@@ -232,17 +262,20 @@ def seedAccounts():
     writeJson('blocks.json', blocks)
 
 def buildReceiveBlocks():
-    global keys
+    global accounts
     global blocks
+
     # receive all accounts with test raw
     i = 0
-    for x in keys:
+    accountList = list(accounts['accounts'])
+    for account in accountList:
         i = (i + 1)
         if i == 1:
             continue
-        # set account
-        account = x['account']
-        key = x['key']
+
+        # set key
+        key = accounts['accounts'][account]['key']
+        # pull blockObject
         blockObject = blocks['accounts'][account]
         previous = '0'
         prev = ''
@@ -265,7 +298,7 @@ def buildReceiveBlocks():
         receiveObject = {"hash":hash, "block":block, "processed":False}
         blockObject['receive'] = receiveObject
         blocks['accounts'][account] = blockObject
-        print("Building Receive Block {0}".format(i))
+        print("Building Receive Block {0}".format((i-1)))
         print("\nCreated block {0}".format(block_out['hash']))
 
         if i%SAVE_EVERY_N == 0:
@@ -273,18 +306,19 @@ def buildReceiveBlocks():
     writeJson('blocks.json', blocks)
 
 def buildSendBlocks():
-    global keys
+    global accounts
     global blocks
-    global balance
+
+    accountList = list(accounts['accounts'])
     # send all accounts with test raw
     i = 0
-    for x in keys:
+    for account in accountList:
         i = (i + 1)
         if i == 1:
             continue
-        # set account
-        account = x['account']
-        key = x['key']
+
+        # set key
+        key = accounts['accounts'][account]['key']
         previous = '0'
         blockObject = blocks['accounts'][account]
         newBalance = 0
@@ -301,69 +335,134 @@ def buildSendBlocks():
         sendObject = {"hash":hash, "block":block, "processed":False}
         blockObject['send'] = sendObject
         blocks['accounts'][account] = blockObject
-        print("Building Send Block {0}".format(i))
+        print("Building Send Block {0}".format((i-1)))
         print("\nCreated block {0}".format(block_out['hash']))
 
         if i%SAVE_EVERY_N == 0:
             saveBlocks()
     writeJson('blocks.json', blocks)
 
-def processReceives():
+def processReceives(all = False):
     global keys
     global blocks
+
+    # using global counters instead of local for processAll function
+    global highest_tps
+    global current_tps
+    global average_tps
+    global start
+    global start_process
+
+    start = time.perf_counter()
+    start_process = time.perf_counter()
+
     # receive all blocks
     savedBlocks = blocks['accounts'].keys()
     i = 0
     for x in savedBlocks:
         i = (i + 1)
+
+        # increase average_tps and current_tps
+        average_tps += 1
+        current_tps += 1
+
+        # calculate current_tps
+        if time.perf_counter() - start > 1:
+            if current_tps > highest_tps:
+                highest_tps = current_tps
+            current_tps = 0
+            start = time.perf_counter()
+
+        # process block
         blockObject = blocks['accounts'][x]
         block = blockObject['receive']
         blockObject['receive']['processed'] = True
-        print("block {0}".format(i))
+        print("block {0}".format((i-1)))
         print("Processing block {0}".format(block['hash']))
         process(block)
+
         # update processed
         blocks['accounts'][x] = blockObject
+
+        # check if blocks need saved
         if i%SAVE_EVERY_N == 0:
             saveBlocks()
-            
-        # delay next process if --tps is not 0, to throttle outgoing
-        if options.tps != 0:
-            while average_tps / (time.perf_counter() - start_process) > options.tps:
-                time.sleep(0.001)
+
+        # check if tps needs to throttle
+        tpsDelay()
+
+    # save all blocks after processing
     writeJson('blocks.json', blocks)
 
-def processSends():
+    if all == False:
+        # calculate tps and print results
+        tpsCalc()
+
+def processSends(all = False):
     global keys
     global blocks
+
+    # using global counters instead of local for processAll function
+    global highest_tps
+    global current_tps
+    global average_tps
+    global start
+    global start_process
+
+    if all == False:
+        start = time.perf_counter()
+        start_process = time.perf_counter()
+
     # send all blocks
     savedBlocks = blocks['accounts'].keys()
     i = 0
     for x in savedBlocks:
         i = (i + 1)
+
+        # increase average_tps and current_tps
+        average_tps += 1
+        current_tps += 1
+
+        # calculate current_tps
+        if time.perf_counter() - start > 1:
+            if current_tps > highest_tps:
+                highest_tps = current_tps
+            current_tps = 0
+            start = time.perf_counter()
+
+        # process block
         blockObject = blocks['accounts'][x]
         block = blockObject['send']
         blockObject['send']['processed'] = True
-        print("block {0}".format(i))
+        print("block {0}".format((i-1)))
         print("Processing block {0}".format(block['hash']))
         process(block)
+
         # update processed
         blocks['accounts'][x] = blockObject
 
+        # check if blocks need saved
         if i%SAVE_EVERY_N == 0:
             saveBlocks()
 
-        # delay next process if --tps is not 0, to throttle outgoing
-        if options.tps != 0:
-            while average_tps / (time.perf_counter() - start_process) > options.tps:
-                time.sleep(0.001)
+        # check if tps needs to throttle
+        tpsDelay()
+
+    # save all blocks after processing
     writeJson('blocks.json', blocks)
+
+    if all == False:
+        # calculate tps and print results
+        tpsCalc()
 
 def processAll():
     # receive all blocks
-    processReceives()
+    processReceives(True)
     # send all blocks
-    processSends()
+    processSends(True)
+
+    # calculate tps and print results
+    tpsCalc()
 
 def buildAll():
     # build all receive blocks
