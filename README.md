@@ -1,8 +1,6 @@
-# out-of-scope
+# out-of-nano-scope
 
 This is my Nano playground for basically anything that nano needs but doesn't have.
-
-all code in this repo is built in my personal time and not endorsed by BrainBlocks.
 
 ## stress testing
 
@@ -17,25 +15,34 @@ and building 10 nano accounts.
 6. run `python3 stress.py -m processAll -n 10 -s 10 -nu 127.0.0.1`
 7. repeat steps 5 and 6
 
-### modes
-buildAccounts - initial account/key pair setup and save
+## disclaimers - please read
 
-seedAccounts - fund each account (real-time)
+1. Do Not change the raw size `-s` used for testing. Once you set up accounts, you can only use that size. If you want to change the size, start from scratch with a new size command.
+2. You can only increase the number of accounts (`-n`). You can not currently decrease the number of accounts used.
+3. You can only increase the number of accounts (`-n`) during a send cycle (pending receive) for current accounts. If you add new accounts outside of this send cycle (after a receive and before a send), you will corrupt the accounts and their block orders. To recover this, call the mode - recoverAll.
 
-buildSend - build all send blocks and save
+### launch arguments
 
-buildReceive - build all receive blocks and save
+1. `-n` - Number of accounts used for testing
+2. `-s` - Size of each transaction in RAW, default is 10 RAW
+3. `-sn` - Save blocks or accounts to disk how often, default is every 10 blocks or accounts
+4. `-r` - Representative to use, default is the brainblocks rep
+5. `-tps` - Throttle transactions per second during processing, default is 0 which is no throttle
+6. `-m` - define what mode you would like to use
+7. `-nu` - url of the nano node that you would like to use
+8. `-np` - port of the nano node that you would like to use, default is 7076
+9. `-a` - account that you would like to recover.
 
-buildAll - build all blocks for both receive and send and save
+### launch modes
 
-processSend - process all send blocks
-
-processReceive - process all receive blocks
-
-processAll - process all blocks for both receive and send
-
-autoOnce - run through buildAll and processAll once
-
-recover - reset specific account's previous block
-
-recoverAll - reset all accounts
+1. `buildAccounts` - initial account/key pair setup and save
+2. `seedAccounts` - fund each account (real-time)
+3. `buildSend` - build all send blocks and save
+4. `buildReceive` - build all receive blocks and save
+5. `buildAll` - build all blocks for both receive and send and save
+6. `processSend` - process all send blocks
+7. `processReceive` - process all receive blocks
+8. `processAll` - process all blocks for both receive and send
+9. `autoOnce` - run through buildAll and processAll once
+10. `recover` - receive all pending blocks and reset specific account's previous block
+11. `recoverAll` - execute recover on all accounts

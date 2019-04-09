@@ -18,9 +18,9 @@ parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how
 parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='xrb_1brainb3zz81wmhxndsbrjb94hx3fhr1fyydmg6iresyk76f3k7y7jiazoji')
 parser.add_argument('-tps', '--tps', type=int, help='Throttle transactions per second during processing. 0 (default) will not throttle.', default=0)
 parser.add_argument('-m', '--mode', type=str, help='define what mode you would like', required=True)
-parser.add_argument('-nu', '--node_url', type=str, help='set node url', required=True)
-parser.add_argument('-np', '--node_port', type=int, help='set node port', default=7076)
-parser.add_argument('-a', '--account', type=str, help='Account that will be used to spam', required=False)
+parser.add_argument('-nu', '--node_url', type=str, help='nano node url', required=True)
+parser.add_argument('-np', '--node_port', type=int, help='nano node port', default=7076)
+parser.add_argument('-a', '--account', type=str, help='Account that needs to be recovered', required=False)
 options = parser.parse_args()
 
 SAVE_EVERY_N = options.save_num
@@ -186,10 +186,8 @@ def buildAccounts():
 
     if os.path.exists('accounts.json'):
         accounts = readJson('accounts.json')
-
-    # check if we already have accounts
-    if len((list(accounts['accounts']))) > 0:
-        print("Can't Change Accounts")
+        currentCount = len((list(accounts['accounts'])))
+        keyNum = (keyNum - currentCount)
 
     i = 0
     for x in range(keyNum):
@@ -236,7 +234,7 @@ def seedAccounts():
         seeded = accounts['accounts'][destAccount]['seeded']
 
         if seeded == True:
-            print("Account has already been seeded")
+            print("Account has already been seeded. Skipping...")
             continue
 
         # calculate the state block balance
@@ -257,6 +255,7 @@ def seedAccounts():
 
         # set seeded to true for destAccount
         accounts['accounts'][destAccount]['seeded'] = True
+        writeJson('accounts.json', accounts)
 
         print("Building Send Block {0}".format((i-1)))
         print("\nCreated block {0}".format(hash))
@@ -264,6 +263,7 @@ def seedAccounts():
         if i%SAVE_EVERY_N == 0:
             saveBlocks()
     writeJson('blocks.json', blocks)
+    writeJson('accounts.json', accounts)
 
 def buildReceiveBlocks():
     global accounts
@@ -539,5 +539,6 @@ elif options.mode == 'recover':
 elif options.mode == 'recoverAll':
     recoverAll()
 
-# save all blocks
+# save all blocks and accounts
 writeJson('blocks.json', blocks)
+writeJson('accounts.json', accounts)
