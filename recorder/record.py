@@ -17,12 +17,12 @@ signaled = False
 def communicateNode(rpc_command):
     buffer = BytesIO()
     c = pycurl.Curl()
-    c.setopt(c.URL, 'ssh.node3.brainblocks.io')
+    c.setopt(c.URL, '127.0.0.1')
     c.setopt(c.PORT, 7076)
     c.setopt(c.POSTFIELDS, json.dumps(rpc_command))
     c.setopt(c.WRITEFUNCTION, buffer.write)
     c.setopt(c.TIMEOUT, 500)
-    
+
     #add a retry mechanism in case of CURL errors
     ok = False
     while not ok:
@@ -42,12 +42,12 @@ def communicateNode(rpc_command):
 # generate rpc commands
 def buildPost(command):
     return {'action': command}
-        
+
 # pull confirmation history from nano node
 def getConfirmations():
     return communicateNode(buildPost('confirmation_history'))
 
-# pull block counts from nano node 
+# pull block counts from nano node
 def getBlocks():
 	return communicateNode(buildPost('block_count'))
 
@@ -64,8 +64,8 @@ def writeJson(filename, data):
 # check if an item exists in the data set already
 def checkArray(item, arr):
     status = False
-    
-    for value in arr: 
+
+    for value in arr:
         if value['hash'] == item['hash']:
             status = True
     return status
@@ -78,13 +78,13 @@ def start():
 	# create empty arrays for upcoming data
 	blocks = []
 	data = []
-	
+
 	# check if files exist and read them before starting
 	if os.path.exists('data.json'):
 		data = readJson('data.json')
 
-	if os.path.exists('blocks.json'):
-		blocks = readJson('blocks.json')
+	if os.path.exists('blockcounts.json'):
+		blocks = readJson('blockcounts.json')
 
 	# record blocks continuously
 	while True:
@@ -103,13 +103,13 @@ def start():
 
 		# create new dictionary to format block counts
 		newBlockDict = {"time": currentTime, "checked": newBlocks['count'], "unchecked": newBlocks['unchecked']}
-		
+
 		# add new block count dictionary to existing data
 		blocks.append(newBlockDict)
 
 		# save changes
 		writeJson('data.json', data)
-		writeJson('blocks.json', blocks)
+		writeJson('blockcounts.json', blocks)
 
 		# notify system when the data was last saved
 		print ('saved data at: ' + time.strftime("%I:%M:%S"))

@@ -8,8 +8,6 @@ import time
 import signal
 import os.path
 
-SAVE_EVERY_N = 10
-
 parser = argparse.ArgumentParser(
     description="Stress test for NANO network. Sends 10 raw each to itself ")
 parser.add_argument('-n', '--num-accounts', type=int, help='Number of accounts', required=True)
