@@ -11,13 +11,13 @@ import os.path
 parser = argparse.ArgumentParser(
     description="Stress test for NANO network. Sends 10 raw each to itself ")
 parser.add_argument('-n', '--num-accounts', type=int, help='Number of accounts', required=True)
-parser.add_argument('-s', '--size', type=int, help='Size of each transaction in RAW', default=10)
+parser.add_argument('-s', '--size', type=int, help='Size of each transaction in Nano raw', default=10)
 parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=10)
 parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='xrb_1brainb3zz81wmhxndsbrjb94hx3fhr1fyydmg6iresyk76f3k7y7jiazoji')
 parser.add_argument('-tps', '--tps', type=int, help='Throttle transactions per second during processing. 0 (default) will not throttle.', default=0)
 parser.add_argument('-m', '--mode', type=str, help='define what mode you would like', required=True)
-parser.add_argument('-nu', '--node_url', type=str, help='nano node url', required=True)
-parser.add_argument('-np', '--node_port', type=int, help='nano node port', default=7076)
+parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', required=True)
+parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
 parser.add_argument('-a', '--account', type=str, help='Account that needs to be recovered', required=False)
 options = parser.parse_args()
 
@@ -33,10 +33,6 @@ def writeJson(filename, data):
     with open(filename, 'w') as json_file:
         json.dump(data, json_file)
 
-def saveBlocks():
-    writeJson('blocks.json', blocks)
-    print('\n(SAVE) Blocks have been written to blocks.json\n')
-
 # add a circuit breaker variable
 global signaled
 signaled = False
@@ -51,6 +47,13 @@ current_tps = 0
 average_tps = 0
 start = 0
 start_process = 0
+
+
+if os.path.exists('accounts.json'):
+    accounts = readJson('accounts.json')
+
+if os.path.exists('blocks.json'):
+    blocks = readJson('blocks.json')
 
 def tpsCalc():
     global highest_tps
@@ -79,12 +82,6 @@ def tpsDelay():
         while average_tps / (time.perf_counter() - start_process) > options.tps:
             time.sleep(0.001)
 
-if os.path.exists('accounts.json'):
-    accounts = readJson('accounts.json')
-
-if os.path.exists('blocks.json'):
-    blocks = readJson('blocks.json')
-
 def communicateNode(rpc_command):
     buffer = BytesIO()
     c = pycurl.Curl()
@@ -110,9 +107,18 @@ def communicateNode(rpc_command):
     parsed_json = json.loads(body.decode('iso-8859-1'))
     return parsed_json
 
+# standard function to save blocks and print
+def saveBlocks():
+    writeJson('blocks.json', blocks)
+    print('\n(SAVE) Blocks have been written to blocks.json\n')
+
 # generate new key pair
 def getKeyPair():
     return communicateNode({'action': 'key_create'})
+
+# republish block to the nano network
+def republish(hash):
+    return communicateNode({'action': 'republish', 'hash': hash})
 
 def getPending(account):
     return communicateNode({'action':'pending', 'account': account, 'count': '10'})
@@ -182,10 +188,8 @@ def buildAccounts():
     global accounts
     keyNum = options.num_accounts
 
-    if os.path.exists('accounts.json'):
-        accounts = readJson('accounts.json')
-        currentCount = len((list(accounts['accounts'])))
-        keyNum = (keyNum - currentCount)
+    currentCount = len((list(accounts['accounts'])))
+    keyNum = (keyNum - currentCount)
 
     i = 0
     for x in range(keyNum):
@@ -386,10 +390,6 @@ def processReceives(all = False):
         # update processed
         blocks['accounts'][x] = blockObject
 
-        # check if blocks need saved
-        if i%SAVE_EVERY_N == 0:
-            saveBlocks()
-
         # check if tps needs to throttle
         tpsDelay()
 
@@ -442,10 +442,6 @@ def processSends(all = False):
 
         # update processed
         blocks['accounts'][x] = blockObject
-
-        # check if blocks need saved
-        if i%SAVE_EVERY_N == 0:
-            saveBlocks()
 
         # check if tps needs to throttle
         tpsDelay()
@@ -514,6 +510,39 @@ def recoverAll():
         recover(account)
     writeJson('blocks.json', blocks)
 
+# republish all receiveblocks
+def republishReceiveBlocks():
+    hashes = []
+    accountsList = list(blocks['accounts'])
+    for account in accountsList:
+        hashes.push(blocks['accounts'][account]['receive']['hash'])
+
+    # clear from memory
+    accountList = []
+
+    for hash in hashes:
+        republish(hash)
+        print("republishing block {0}".format(hash))
+
+# republish all send blocks
+def republishSendBlocks():
+    hashes = []
+    accountsList = list(blocks['accounts'])
+    for account in accountsList:
+        hashes.push(blocks['accounts'][account]['send']['hash'])
+
+    # clear from memory
+    accountList = []
+
+    for hash in hashes:
+        republish(hash)
+        print("republishing block {0}".format(hash))
+
+# republish all blocks
+def republishAll():
+    republishReceiveBlocks()
+    republishSendBlocks()
+
 if options.mode == 'buildAccounts':
     buildAccounts()
 elif options.mode == 'seedAccounts':
@@ -532,6 +561,12 @@ elif options.mode == 'processAll':
     processAll()
 elif options.mode == 'autoOnce':
     autoOnce()
+elif options.mode == 'republishSend':
+    republishSendBlocks()
+elif options.mode == 'republishReceive':
+    republishReceiveBlocks()
+elif options.mode == 'republishAll':
+    republishAll()
 elif options.mode == 'recover':
     recover(options.account)
 elif options.mode == 'recoverAll':

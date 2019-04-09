@@ -44,5 +44,8 @@ and building 10 nano accounts.
 7. `processReceive` - process all receive blocks
 8. `processAll` - process all blocks for both receive and send
 9. `autoOnce` - run through buildAll and processAll once
-10. `recover` - receive all pending blocks and reset specific account's previous block
-11. `recoverAll` - execute recover on all accounts
+10. `republishSend` - republish all send blocks
+11. `republishReceive` - republish all receive blocks
+12. `republishAll` - republish all blocks
+13. `recover` - receive all pending blocks and reset specific account's previous block
+14. `recoverAll` - execute recover on all accounts
