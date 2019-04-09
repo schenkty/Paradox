@@ -5,11 +5,20 @@ Records data from Nano nodes
 Install `pycurl`
 
 # Usage
-## Run Manual:
-`python record.py`  
+## run recorder manually:
+`python3 record.py`  
 
-## Run continuously:
+## run recorder continuously:
 Set Permissions for script:
 1. `chmod +x run.sh`
-
 2. `sh run.sh`
+
+# process script
+this script matches up the hashes from `record.py` and accounts from `stress.py`
+
+1. provide the `blocks.json` file from `stress.py` and `data.json` from `record.py`
+2. run `python3 process.py`
+
+### launch arguments
+1. `-l` - set label to identify your blocks, default to `Unknown`
+2. `-sn` - Save blocks to disk how often, default is every 10 blocks

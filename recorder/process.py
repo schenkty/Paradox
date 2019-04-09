@@ -4,7 +4,6 @@
 # import required packages
 from io import BytesIO
 import json
-import pycurl
 import sys
 import time
 import signal
@@ -12,7 +11,7 @@ import os.path
 import argparse
 
 parser = argparse.ArgumentParser(description="Match blocks up with accounts")
-parser.add_argument('-l', '--label', type=str, help='sender label', default='Node1')
+parser.add_argument('-l', '--label', type=str, help='sender label', default='Unknown')
 parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=10)
 options = parser.parse_args()
 
