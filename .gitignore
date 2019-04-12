@@ -3,5 +3,6 @@ data.json
 blocks.json
 accounts.json
 blockData.json
+data-info.json
 .DS_Store
 overview.txt

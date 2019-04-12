@@ -1,4 +1,4 @@
-# Nano Node Recorder
+# Nano Recorder
 # Ty Schenk 2019
 
 # import required packages
@@ -12,15 +12,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description="Match blocks up with accounts")
 parser.add_argument('-l', '--label', type=str, help='sender label', default='Unknown')
-parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=10)
 options = parser.parse_args()
-
-SAVE_EVERY_N = options.save_num
-
-# get account for hash
-def getAccount(nanoHash):
-	command = {'action': 'block_account', 'hash': nanoHash}
-	return communicateNode(command)['account']
 
 # read json file and decode it
 def readJson(filename):
@@ -35,16 +27,29 @@ def writeJson(filename, data):
 # notify system that the recording has started
 print('Processing started')
 
-# create empty array for upcoming data
+# global vars
 data = []
 newData = []
 accounts = []
 blockData = {}
+blockArray = list(blockData)
 process = True
 
 # check if files exist and read them before starting
 if os.path.exists('data.json'):
 	data = readJson('data.json')
+
+if os.path.exists('data-info.json'):
+	print("Importing Existing Blocks")
+	temp = readJson('data-info.json')
+	addInfo = True
+	while addInfo:
+		if len(temp) == 0:
+			addInfo = False
+		for object in temp:
+			data.append(object)
+			temp.remove(object)
+	print("Importing Complete")
 
 # check if files exist and read them before starting
 if os.path.exists('blocks.json'):
@@ -56,44 +61,54 @@ if os.path.exists('blocks.json'):
         receive = temp['accounts'][account]['receive']['hash']
         blockData[send] = account
         blockData[receive] = account
+	# update blockArray
+    blockArray = list(blockData)
 
 while process:
-    if len(data) == 0:
-        # save changes
-        writeJson('data-info.json', newData)
-        process = False
+	if len(data) == 0:
+		# save changes
+		writeJson('data-info.json', newData)
+		process = False
 
-    i = 0
-    for object in data:
-        i = (i + 1)
-    	# notfiy user of pending data
-        print ('data left: ' + str(len(data)) + ' at: ' + time.strftime("%I:%M:%S"))
+	for object in data:
+		known = False
 
-        if not 'hash' in object:
-            data.remove(object)
-            continue
+		# notfiy user of pending data
+		sys.stdout.write(time.strftime("%I:%M:%S") + " data left: %d%   \r" % (len(data)) )
+		sys.stdout.flush()
 
-        hash = object['hash']
-        blockArray = list(blockData)
+		if not 'hash' in object:
+			data.remove(object)
+			continue
 
-        if hash in blockArray:
-            account = blockData[hash]
-            # create new dictionary
-            newBlockDict = {"label": options.label, "hash": hash, "account": account, "duration": object['duration'], "time": object['time'], "tally": object['tally']}
-        else:
-            # create new dictionary
-            newBlockDict = {"label": "Unknown", "hash": hash, "account": 'xrb_other', "duration": object['duration'], "time": object['time'], "tally": object['tally']}
+		hash = object['hash']
 
-    	# add new dictionary to newData array
-        newData.append(newBlockDict)
+		if hash in blockArray:
+			known = True
 
-        # remove object from array
-        data.remove(object)
+		if 'label' in object and object['label'] == "Unknown" and known == True:
+			account = blockData[hash]
+			object['label'] = options.label
+			object['account'] = account
 
-        if i%SAVE_EVERY_N == 0:
-            # notify system when the data was last saved
-            print ('saved data at: ' + time.strftime("%I:%M:%S"))
-            # save changes
-            writeJson('data-info.json', newData)
-    # save changes
-    writeJson('data-info.json', newData)
+		if not 'label' in object and known == False:
+			object['label'] = "Unknown"
+			object['account'] = "xrb_other"
+
+		if not 'label' in object and known == True:
+			account = blockData[hash]
+			object['label'] = options.label
+			object['account'] = account
+
+		if not object in newData:
+			# add new dictionary to newData array
+			newData.append(object)
+
+		# remove object from data
+		data.remove(object)
+
+	# save changes
+	writeJson('data-info.json', newData)
+
+# notify system that the processing has finished
+print('Processing Complete')

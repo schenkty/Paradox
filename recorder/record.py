@@ -1,5 +1,5 @@
-# Nano Node Recorder
-# Ty Schenk 2018
+# Nano Recorder
+# Ty Schenk 2019
 
 # import required packages
 from io import BytesIO

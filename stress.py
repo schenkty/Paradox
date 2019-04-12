@@ -1,4 +1,7 @@
+# Nano Stresser
 # Ty Schenk 2019
+
+# import required packages
 from io import BytesIO
 import json
 import pycurl
