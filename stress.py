@@ -371,6 +371,10 @@ def processReceives(all = False):
     for x in savedBlocks:
         i = (i + 1)
 
+        # skip blocks that were already processed
+        if blocks['accounts'][x]['receive']['processed'] == True:
+            continue
+
         # increase average_tps and current_tps
         average_tps += 1
         current_tps += 1
@@ -392,6 +396,10 @@ def processReceives(all = False):
 
         # update processed
         blocks['accounts'][x] = blockObject
+
+        # save during processing
+        if i%SAVE_EVERY_N == 0:
+            saveBlocks()
 
         # check if tps needs to throttle
         tpsDelay()
@@ -424,6 +432,10 @@ def processSends(all = False):
     for x in savedBlocks:
         i = (i + 1)
 
+        # skip blocks that were already processed
+        if blocks['accounts'][x]['send']['processed'] == True:
+            continue
+
         # increase average_tps and current_tps
         average_tps += 1
         current_tps += 1
@@ -445,6 +457,10 @@ def processSends(all = False):
 
         # update processed
         blocks['accounts'][x] = blockObject
+
+        # save during processing
+        if i%SAVE_EVERY_N == 0:
+            saveBlocks()
 
         # check if tps needs to throttle
         tpsDelay()
