@@ -1,4 +1,4 @@
-# Nano Recorder
+# Nano Data Recorder
 # Ty Schenk 2019
 
 # import required packages

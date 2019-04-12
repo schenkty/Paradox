@@ -2,7 +2,7 @@
 
 This is my Nano playground for basically anything that nano needs but doesn't have.
 
-## stress testing
+## network stressor
 
 1. install pycurl
 2. build launch script

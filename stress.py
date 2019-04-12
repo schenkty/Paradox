@@ -1,4 +1,4 @@
-# Nano Stresser
+# Nano Stressor
 # Ty Schenk 2019
 
 # import required packages
