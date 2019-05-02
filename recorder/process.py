@@ -17,12 +17,17 @@ options = parser.parse_args()
 # read json file and decode it
 def readJson(filename):
     with open(filename) as f:
+        return json.loads(f)
+
+# read json file and decode it
+def readJsonBlocks(filename):
+    with open(filename) as f:
         return json.load(f)
 
 # write json file and encode it
 def writeJson(filename, data):
     with open(filename, 'w') as json_file:
-        json.dump(data, json_file)
+        json.dumps(data, json_file)
 
 # notify system that the recording has started
 print('Processing started')
@@ -54,7 +59,7 @@ if os.path.exists('data-info.json'):
 # check if files exist and read them before starting
 if os.path.exists('blocks.json'):
     temp = {'accounts':{}}
-    temp = readJson('blocks.json')
+    temp = readJsonBlocks('blocks.json')
     accounts = list(temp['accounts'])
     for account in accounts:
         send = temp['accounts'][account]['send']['hash']

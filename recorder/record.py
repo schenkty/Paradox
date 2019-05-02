@@ -54,12 +54,12 @@ def getBlocks():
 # read json file and decode it
 def readJson(filename):
     with open(filename) as f:
-        return json.load(f)
+        return json.loads(f)
 
 # write json file and encode it
 def writeJson(filename, data):
     with open(filename, 'w') as json_file:
-        json.dump(data, json_file)
+        json.dumps(data, json_file)
 
 # check if an item exists in the data set already
 def checkArray(item, arr):
