@@ -6,6 +6,7 @@ from io import BytesIO
 import json
 import pycurl
 import sys
+import threading
 import time
 import datetime
 import signal
@@ -22,7 +23,10 @@ SAVE_EVERY_N = options.save_num
 # add a circuit breaker variable
 global signaled
 signaled = False
-lastSave = datetime.datetime.now()
+
+# global dicts for upcoming data
+blocks = {'times':{}}
+data = {'hashes':{}}
 
 def communicateNode(rpc_command):
     buffer = BytesIO()
@@ -71,52 +75,78 @@ def writeJson(filename, data):
     with open(filename, 'w') as json_file:
         json.dump(data, json_file)
 
+class recorderThread(threading.Thread):
+   def __init__(self, threadID, name):
+      threading.Thread.__init__(self)
+      self.threadID = threadID
+      self.name = name
+   def run(self):
+      print("Starting " + self.name)
+      start()
+      print("Exiting " + self.name)
+
+class saveThread(threading.Thread):
+   def __init__(self, threadID, name):
+      threading.Thread.__init__(self)
+      self.threadID = threadID
+      self.name = name
+   def run(self):
+      print("Starting " + self.name)
+      saveBlocks()
+      print("Exiting " + self.name)
+
+def saveBlocks():
+    global blocks
+    global data
+    lastSave = datetime.datetime.now()
+    while True:
+		# save changes
+        currentTime = datetime.datetime.now()
+        timeDiff = currentTime - lastSave
+        if SAVE_EVERY_N <= timeDiff.seconds:
+            writeJson('data.json', data)
+            writeJson('blockcounts.json', blocks)
+            lastSave = currentTime
+            # notify system when the data was last saved
+            print ('saved data at: ' + time.strftime("%I:%M:%S"))
+
 # execute recording responsibilities
 def start():
-	global lastSave
-	# notify system that the recording has started
-	print('Recorder started')
+    global blocks
+    global data
 
-	# create empty arrays for upcoming data
-	blocks = {'times':{}}
-	data = {'hashes':{}}
+    # notify system that the recording has started
+    print('Recorder started')
 
 	# check if files exist and read them before starting
-	if os.path.exists('data.json'):
-		data = readJson('data.json')
+    if os.path.exists('data.json'):
+        data = readJson('data.json')
 
-	if os.path.exists('blockcounts.json'):
-		blocks = readJson('blockcounts.json')
+    if os.path.exists('blockcounts.json'):
+        blocks = readJson('blockcounts.json')
 
-	# record blocks continuously
-	while True:
-		start_time = time.time()
-		confirmations = getConfirmations()['confirmations']
-		newBlocks = getBlocks()
+    # record blocks continuously
+    while True:
+        # get current time
+        currentTime = time.time()
+        confirmations = getConfirmations()['confirmations']
+        newBlocks = getBlocks()
 
-		# insert new data into old data
-		for item in confirmations:
-			hash = item['hash']
-			data['hashes'][hash] = item
+        # insert new data into old data
+        for item in confirmations:
+            hash = item['hash']
+            data['hashes'][hash] = item
 
-		# get current time
-		currentTime = time.time()
+        # create new dictionary to format block counts
+        blocks['times'][currentTime] = {"time": currentTime, "checked": newBlocks['count'], "unchecked": newBlocks['unchecked']}
+        print("Recorded Blocks. Execution time: %s seconds" % (time.time() - currentTime))
+        # sleep for 0.01 seconds
+        time.sleep(0.01)
 
-		# create new dictionary to format block counts
-		blocks['times'][currentTime] = {"time": currentTime, "checked": newBlocks['count'], "unchecked": newBlocks['unchecked']}
+# Create new threads
+saveThread = saveThread(1, "Nano-Recorder-Save")
+recordThread = recorderThread(2, "Nano-Recorder")
 
-		# save changes
-		currentTime = datetime.datetime.now()
-		timeDiff = currentTime - lastSave
-		if SAVE_EVERY_N <= timeDiff.seconds:
-			writeJson('data.json', data)
-			writeJson('blockcounts.json', blocks)
-			lastSave = currentTime
-			# notify system when the data was last saved
-			print ('saved data at: ' + time.strftime("%I:%M:%S"))
-
-		print("Recorded Blocks. Execution time: %s seconds" % (time.time() - start_time))
-		# sleep for 0.01 seconds
-		time.sleep(0.01)
-
-start()
+# Start new Threads
+saveThread.start()
+recordThread.start()
