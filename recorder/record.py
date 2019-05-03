@@ -6,7 +6,7 @@ from io import BytesIO
 import json
 import pycurl
 import sys
-import threading
+from threading import Timer
 import time
 import datetime
 import signal
@@ -75,45 +75,43 @@ def writeJson(filename, data):
     with open(filename, 'w') as json_file:
         json.dump(data, json_file)
 
-class recorderThread(threading.Thread):
-   def __init__(self, threadID, name):
-      threading.Thread.__init__(self)
-      self.threadID = threadID
-      self.name = name
-   def run(self):
-      print("Starting " + self.name)
-      start()
-      print("Exiting " + self.name)
+class RepeatedTimer(object):
+    def __init__(self, interval, function, *args, **kwargs):
+        self._timer     = None
+        self.interval   = interval
+        self.function   = function
+        self.args       = args
+        self.kwargs     = kwargs
+        self.is_running = False
+        self.start()
 
-class saveThread(threading.Thread):
-   def __init__(self, threadID, name):
-      threading.Thread.__init__(self)
-      self.threadID = threadID
-      self.name = name
-   def run(self):
-      print("Starting " + self.name)
-      saveBlocks()
-      print("Exiting " + self.name)
+    def _run(self):
+        self.is_running = False
+        self.start()
+        self.function(*self.args, **self.kwargs)
+
+    def start(self):
+        if not self.is_running:
+            self._timer = Timer(self.interval, self._run)
+            self._timer.start()
+            self.is_running = True
+
+    def stop(self):
+        self._timer.cancel()
+        self.is_running = False
 
 def saveBlocks():
     global blocks
     global data
-    lastSave = datetime.datetime.now()
-    while True:
-		# save changes
-        currentTime = datetime.datetime.now()
-        timeDiff = currentTime - lastSave
-        if SAVE_EVERY_N <= timeDiff.seconds:
-            tempData = data
-            tempBlocks = blocks
-            writeJson('data.json', tempData)
-            writeJson('blockcounts.json', tempBlocks)
-            lastSave = currentTime
-            # notify system when the data was last saved
-            print ('saved data at: ' + time.strftime("%I:%M:%S"))
+    tempData = data
+    tempBlocks = blocks
+    writeJson('data.json', tempData)
+    writeJson('blockcounts.json', tempBlocks)
+    # notify system when the data was last saved
+    print ('saved data at: ' + time.strftime("%I:%M:%S"))
 
 # execute recording responsibilities
-def start():
+def startRecording():
     global blocks
     global data
 
@@ -141,14 +139,11 @@ def start():
 
         # create new dictionary to format block counts
         blocks['times'][currentTime] = {"time": currentTime, "checked": newBlocks['count'], "unchecked": newBlocks['unchecked']}
-        print("Recorded Blocks. Execution time: %s seconds" % (time.time() - currentTime))
+        print("recorded blocks. execution: %s seconds" % (time.time() - currentTime))
         # sleep for 0.01 seconds
         time.sleep(0.01)
 
-# Create new threads
-saveThread = saveThread(1, "Nano-Recorder-Save")
-recordThread = recorderThread(2, "Nano-Recorder")
-
-# Start new Threads
-saveThread.start()
-recordThread.start()
+# write to disk for SAVE_EVERY_N
+RepeatedTimer(SAVE_EVERY_N, saveBlocks)
+# start data recorder
+startRecording()
