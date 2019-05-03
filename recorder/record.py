@@ -104,8 +104,10 @@ def saveBlocks():
         currentTime = datetime.datetime.now()
         timeDiff = currentTime - lastSave
         if SAVE_EVERY_N <= timeDiff.seconds:
-            writeJson('data.json', data)
-            writeJson('blockcounts.json', blocks)
+            tempData = data
+            tempBlocks = blocks
+            writeJson('data.json', tempData)
+            writeJson('blockcounts.json', tempBlocks)
             lastSave = currentTime
             # notify system when the data was last saved
             print ('saved data at: ' + time.strftime("%I:%M:%S"))
