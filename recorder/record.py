@@ -9,6 +9,12 @@ import sys
 import time
 import signal
 import os.path
+import argparse
+
+parser = argparse.ArgumentParser(description="record all blocks on Nano network")
+parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='127.0.0.1')
+parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
+options = parser.parse_args()
 
 # add a circuit breaker variable
 global signaled
@@ -17,8 +23,8 @@ signaled = False
 def communicateNode(rpc_command):
     buffer = BytesIO()
     c = pycurl.Curl()
-    c.setopt(c.URL, '127.0.0.1')
-    c.setopt(c.PORT, 7076)
+    c.setopt(c.URL, options.node_url)
+    c.setopt(c.PORT, options.node_port)
     c.setopt(c.POSTFIELDS, json.dumps(rpc_command))
     c.setopt(c.WRITEFUNCTION, buffer.write)
     c.setopt(c.TIMEOUT, 500)

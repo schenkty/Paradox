@@ -30,8 +30,8 @@ and building 10 nano accounts.
 4. `-r` - Representative to use, default is the brainblocks rep
 5. `-tps` - Throttle transactions per second during processing, default is 0 which is no throttle
 6. `-m` - define what mode you would like to use
-7. `-nu` - url of the nano node that you would like to use
-8. `-np` - port of the nano node that you would like to use, default is 7076
+7. `-nu` - url of the nano node that you would like to use, default is `127.0.0.1`
+8. `-np` - port of the nano node that you would like to use, default is `55000`
 9. `-a` - account that you would like to recover.
 
 ### launch modes
