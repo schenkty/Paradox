@@ -60,12 +60,12 @@ def getBlocks():
 # read json file and decode it
 def readJson(filename):
     with open(filename) as f:
-        return json.loads(f)
+        return json.load(f)
 
 # write json file and encode it
 def writeJson(filename, data):
     with open(filename, 'w') as json_file:
-        json_file.write(json.dumps(data))
+        json.dump(data, json_file)
 
 # execute recording responsibilities
 def start():
@@ -90,21 +90,14 @@ def start():
 
 		# insert new data into old data
 		for item in confirmations:
-            hash = item['hash']
-            duration = item['duration']
-            time = item['time']
-            tally = item['tally']
-
-            data['hashes'][hash] = item
+			hash = item['hash']
+			data['hashes'][hash] = item
 
 		# get current time
 		currentTime = time.time()
 
 		# create new dictionary to format block counts
-        blocks['times'][currentTime] = {"time": currentTime, "checked": newBlocks['count'], "unchecked": newBlocks['unchecked']}
-
-		# # add new block count dictionary to existing data
-		# blocks.append(newBlockDict)
+		blocks['times'][currentTime] = {"time": currentTime, "checked": newBlocks['count'], "unchecked": newBlocks['unchecked']}
 
 		# save changes
 		writeJson('data.json', data)
@@ -113,7 +106,7 @@ def start():
 		# notify system when the data was last saved
 		print ('saved data at: ' + time.strftime("%I:%M:%S"))
 
-		# sleep for 30 seconds
-		time.sleep(30)
+		# sleep for 0.1 seconds
+		time.sleep(0.1)
 
 start()
