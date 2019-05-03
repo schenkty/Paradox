@@ -59,7 +59,7 @@ def readJson(filename):
 # write json file and encode it
 def writeJson(filename, data):
     with open(filename, 'w') as json_file:
-        json.dumps(data, json_file)
+        json_file.write(json.dumps(data))
 
 # check if an item exists in the data set already
 def checkArray(item, arr):
