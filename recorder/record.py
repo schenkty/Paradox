@@ -76,8 +76,8 @@ def start():
 	print('Recorder started')
 
 	# create empty arrays for upcoming data
-	blocks = []
-	data = []
+	blocks = {'times':{}}
+	data = {'hashes':{}}
 
 	# check if files exist and read them before starting
 	if os.path.exists('data.json'):
@@ -93,19 +93,21 @@ def start():
 
 		# insert new data into old data
 		for item in confirmations:
-			# check if data array is empty
-			if not checkArray(item, data):
-				# add new data to existing data
-				data.append(item)
+            hash = item['hash']
+            duration = item['duration']
+            time = item['time']
+            tally = item['tally']
+
+            data['hashes'][hash] = item
 
 		# get current time
 		currentTime = time.time()
 
 		# create new dictionary to format block counts
-		newBlockDict = {"time": currentTime, "checked": newBlocks['count'], "unchecked": newBlocks['unchecked']}
+        blocks['times'][currentTime] = {"time": currentTime, "checked": newBlocks['count'], "unchecked": newBlocks['unchecked']}
 
-		# add new block count dictionary to existing data
-		blocks.append(newBlockDict)
+		# # add new block count dictionary to existing data
+		# blocks.append(newBlockDict)
 
 		# save changes
 		writeJson('data.json', data)

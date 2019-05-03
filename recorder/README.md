@@ -22,3 +22,4 @@ this script matches up the hashes from `record.py` and accounts from `stress.py`
 
 ### launch arguments
 1. `-l` - set label to identify your blocks, default to `Unknown`
+2. `-e` - declare if you want to export the data as an array, default to `False`
