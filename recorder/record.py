@@ -61,15 +61,6 @@ def writeJson(filename, data):
     with open(filename, 'w') as json_file:
         json_file.write(json.dumps(data))
 
-# check if an item exists in the data set already
-def checkArray(item, arr):
-    status = False
-
-    for value in arr:
-        if value['hash'] == item['hash']:
-            status = True
-    return status
-
 # execute recording responsibilities
 def start():
 	# notify system that the recording has started
