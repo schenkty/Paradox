@@ -5,5 +5,6 @@ blocks.json
 accounts.json
 blockData.json
 data-info.json
+data-info.export.json
 .DS_Store
 overview.txt

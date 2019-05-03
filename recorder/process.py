@@ -44,21 +44,21 @@ if os.path.exists('data-info.json'):
 	print("Importing Existing Blocks")
 	temp = readJson('data-info.json')
 
-    if 'hashes' not in temp:
-        sys.exit("Invalid data-info.json format")
+	if 'hashes' not in temp:
+		sys.exit("Invalid data-info.json format")
 
 	addInfo = True
+	tempKeys = list(temp['hashes'].keys())
 	while addInfo:
-        tempKeys = temp['hashes'].keys()
-        if len(tempKeys) == 0:
+		if len(tempKeys) == 0:
 			addInfo = False
+		for key in tempKeys:
+			hashData = temp['hashes'][key]
+			print(time.strftime("%I:%M:%S") + " importing data left: " + str(len(tempKeys)))
 
-		for object in tempKeys:
-            hashData = temp['hashes'][object]
-
-            data['hashes'][object] = hashData
-            # remove from temp
-            del temp['hashes'][object]
+			data['hashes'][key] = hashData
+    		# remove from temp
+			tempKeys.remove(key)
 
 	print("Importing Complete")
 
@@ -75,24 +75,23 @@ if os.path.exists('blocks.json'):
 	# update blockArray
     blockArray = list(blockData)
 
+dataKeys = list(data['hashes'].keys())
 while process:
-    dataKeys = data['hashes'].keys()
 	if len(dataKeys) == 0:
 		# save changes
 		writeJson('data-info.json', newData)
 		process = False
 
 	for object in dataKeys:
-        objectData = data['hashes'][object]
+		objectData = data['hashes'][object]
 		known = False
 
 		# notfiy user of pending data
-		sys.stdout.write(time.strftime("%I:%M:%S") + " data left: %d%   \r" % (len(data)) )
-		sys.stdout.flush()
+		print(time.strftime("%I:%M:%S") + " processing data left: " + str(len(dataKeys)))
 
 		if not 'hash' in objectData:
-            # remove from data
-            del data['hashes'][object]
+			# remove from data
+			dataKeys.remove(object)
 			continue
 
 		hash = objectData['hash']
@@ -114,31 +113,32 @@ while process:
 			objectData['label'] = options.label
 			objectData['account'] = account
 
-        # put object in newData
-        newData['hashes'][object] = objectData
+		# put object in newData
+		newData['hashes'][object] = objectData
 
 		# remove object from data
-        del data['hashes'][object]
-
+		dataKeys.remove(object)
 	# save changes
 	writeJson('data-info.json', newData)
 
 if options.export == "True":
+    print("Exporting Data")
     exportData = []
     processExport = True
+    dataKeys = list(newData['hashes'].keys())
     while processExport:
-        dataKeys = newData['hashes'].keys()
-    	if len(dataKeys) == 0:
-    		# save changes
-    		writeJson('data-info.export.json', exportData)
-    		processExport = False
+        if len(dataKeys) == 0:
+            # save changes
+            writeJson('data-info.export.json', exportData)
+            processExport = False
         for object in dataKeys:
             objectData = newData['hashes'][object]
             exportData.append(objectData)
-    		# remove object from data
-            del newData['hashes'][object]
-	# save changes
-    writeJson('data-info.export.json', newData)
+            # remove object from data
+            dataKeys.remove(object)
+    # save changes
+    writeJson('data-info.export.json', exportData)
+    print("Exporting Data Complete")
 
 # notify system that the processing has finished
 print('Processing Complete')
