@@ -16,13 +16,20 @@ import argparse
 parser = argparse.ArgumentParser(description="record all blocks on Nano network")
 parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='127.0.0.1')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
-parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=60)
+parser.add_argument('-s', '--save', type=int, help='Save blocks to disk how often (in seconds)', default=60)
+parser.add_argument('-d', '--delay', type=int, help='recorder delay (in seconds)', default=0.01)
 options = parser.parse_args()
-SAVE_EVERY_N = options.save_num
+
+SAVE_EVERY_N = options.save
+# sleep for 0.01 seconds
+RECORD_DELAY = options.delay
 
 # add a circuit breaker variable
 global signaled
 signaled = False
+
+# global save pause
+savePause = False
 
 # global dicts for upcoming data
 blocks = {'times':{}}
@@ -103,8 +110,12 @@ class RepeatedTimer(object):
 def saveBlocks():
     global blocks
     global data
+    global savePause
+
+    savePause = True
     tempData = data
     tempBlocks = blocks
+    savePause = False
     writeJson('data.json', tempData)
     writeJson('blockcounts.json', tempBlocks)
     # notify system when the data was last saved
@@ -114,6 +125,7 @@ def saveBlocks():
 def startRecording():
     global blocks
     global data
+    global savePause
 
     # notify system that the recording has started
     print('Recorder started')
@@ -132,6 +144,11 @@ def startRecording():
         confirmations = getConfirmations()['confirmations']
         newBlocks = getBlocks()
 
+        # wait if save is trying to make a copy
+        while savePause:
+            print("waiting for save to copy: " + time.strftime("%I:%M:%S"))
+            pass
+
         # insert new data into old data
         for item in confirmations:
             hash = item['hash']
@@ -140,8 +157,8 @@ def startRecording():
         # create new dictionary to format block counts
         blocks['times'][currentTime] = {"time": currentTime, "checked": newBlocks['count'], "unchecked": newBlocks['unchecked']}
         print("recorded blocks. execution: %s seconds" % (time.time() - currentTime))
-        # sleep for 0.01 seconds
-        time.sleep(0.01)
+
+        time.sleep(RECORD_DELAY)
 
 # write to disk for SAVE_EVERY_N
 RepeatedTimer(SAVE_EVERY_N, saveBlocks)
