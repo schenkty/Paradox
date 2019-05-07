@@ -12,7 +12,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description="Match blocks up with accounts")
 parser.add_argument('-l', '--label', type=str, help='sender label', default='Unknown')
-parser.add_argument('-e', '--export', help='print out export format', default=False)
+parser.add_argument('-e', '--export', help='export data out into table format', default=False)
 options = parser.parse_args()
 
 # read json file and decode it
@@ -40,6 +40,30 @@ process = True
 if os.path.exists('data.json'):
 	data = readJson('data.json')
 
+if os.path.exists('blockcounts.json'):
+	temp = readJson('blockcounts.json')
+    print("Exporting Block Count Data")
+    exportData = []
+    processExport = True
+    dataKeys = list(blockCounts['times'].keys())
+    while processExport:
+        if len(dataKeys) == 0:
+            # save changes
+            writeJson('blockcounts.export.json', exportData)
+            processExport = False
+        for object in dataKeys:
+            objectData = newData['times'][object]
+            exportData.append(objectData)
+            # remove object from data
+            dataKeys.remove(object)
+    # save changes
+    writeJson('blockcounts.export.json', exportData)
+    print("Exporting Block Count Data Complete")
+    # release from mem
+    temp = None
+    exportData = None
+    dataKeys = None
+
 if os.path.exists('data-info.json'):
 	print("Importing Existing Blocks")
 	temp = readJson('data-info.json')
@@ -59,8 +83,10 @@ if os.path.exists('data-info.json'):
 			data['hashes'][key] = hashData
     		# remove from temp
 			tempKeys.remove(key)
-
 	print("Importing Complete")
+    # release from mem
+    tempKeys = None
+    temp = None
 
 # check if files exist and read them before starting
 if os.path.exists('blocks.json'):
@@ -74,6 +100,9 @@ if os.path.exists('blocks.json'):
         blockData[receive] = account
 	# update blockArray
     blockArray = list(blockData)
+
+    # release from mem
+    temp = None
 
 dataKeys = list(data['hashes'].keys())
 while process:
@@ -139,6 +168,7 @@ if options.export == "True":
     # save changes
     writeJson('data-info.export.json', exportData)
     print("Exporting Data Complete")
+
 
 # notify system that the processing has finished
 print('Processing Complete')
