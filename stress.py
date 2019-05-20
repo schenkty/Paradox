@@ -22,6 +22,8 @@ parser.add_argument('-m', '--mode', type=str, help='define what mode you would l
 parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='127.0.0.1')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
 parser.add_argument('-a', '--account', type=str, help='Account that needs to be recovered', required=False)
+parser.add_argument('-z', '--zero_work', type=str, help='Submits empty work', default='false')
+
 options = parser.parse_args()
 
 SAVE_EVERY_N = options.save_num
@@ -157,6 +159,11 @@ def generateBlock(key, account, balance, previous, link):
     create_block = {'action': 'block_create', 'type': 'state', 'account': account,
                     'link': link, 'balance': balance, 'representative': options.representative,
                     'previous': previous, 'key': key}
+
+    if options.zero_work == 'true':
+        create_block = {'action': 'block_create', 'type': 'state', 'account': account,
+                        'link': link, 'balance': balance, 'representative': options.representative,
+                        'previous': previous, 'key': key, 'work': '1111111111111111'}
     # Create block
     block_out = communicateNode(create_block)
     return block_out
