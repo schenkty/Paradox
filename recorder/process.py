@@ -42,27 +42,27 @@ if os.path.exists('data.json'):
 
 if os.path.exists('blockcounts.json'):
 	temp = readJson('blockcounts.json')
-    print("Exporting Block Count Data")
-    exportData = []
-    processExport = True
-    dataKeys = list(blockCounts['times'].keys())
-    while processExport:
-        if len(dataKeys) == 0:
-            # save changes
-            writeJson('blockcounts.export.json', exportData)
-            processExport = False
-        for object in dataKeys:
-            objectData = newData['times'][object]
-            exportData.append(objectData)
-            # remove object from data
-            dataKeys.remove(object)
-    # save changes
-    writeJson('blockcounts.export.json', exportData)
-    print("Exporting Block Count Data Complete")
-    # release from mem
-    temp = None
-    exportData = None
-    dataKeys = None
+	print("Exporting Block Count Data")
+	exportData = []
+	processExport = True
+	dataKeys = list(temp['times'].keys())
+	while processExport:
+		if len(dataKeys) == 0:
+			# save changes
+			writeJson('blockcounts.export.json', exportData)
+			processExport = False
+		for object in dataKeys:
+			objectData = temp['times'][object]
+			exportData.append(objectData)
+			# remove object from data
+			dataKeys.remove(object)
+	# save changes
+	writeJson('blockcounts.export.json', exportData)
+	print("Exporting Block Count Data Complete")
+	# release from mem
+	temp = None
+	exportData = None
+	dataKeys = None
 
 if os.path.exists('data-info.json'):
 	print("Importing Existing Blocks")
@@ -85,8 +85,8 @@ if os.path.exists('data-info.json'):
 			tempKeys.remove(key)
 	print("Importing Complete")
     # release from mem
-    tempKeys = None
-    temp = None
+	tempKeys = None
+	temp = None
 
 # check if files exist and read them before starting
 if os.path.exists('blocks.json'):
