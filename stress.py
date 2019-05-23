@@ -22,7 +22,7 @@ parser.add_argument('-m', '--mode', type=str, help='define what mode you would l
 parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='127.0.0.1')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
 parser.add_argument('-a', '--account', type=str, help='Account that needs to be recovered', required=False)
-parser.add_argument('-z', '--zero_work', type=str, help='Submits empty work', default='false')
+parser.add_argument('-z', '--zero_work', type=str, help='Submits empty work', default='False')
 
 options = parser.parse_args()
 

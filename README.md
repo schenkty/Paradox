@@ -33,6 +33,7 @@ and building 10 nano accounts.
 7. `-nu` - url of the nano node that you would like to use, default is `127.0.0.1`
 8. `-np` - port of the nano node that you would like to use, default is `55000`
 9. `-a` - account that you would like to recover.
+10. `-z` - provide zero proof of work, default is `False`
 
 ### launch modes
 
