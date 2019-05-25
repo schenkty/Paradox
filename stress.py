@@ -536,10 +536,29 @@ def recoverAll():
         recover(account)
     writeJson('blocks.json', blocks)
 
+def resetProcessed():
+    global keys
+    global blocks
+
+    # send all blocks
+    savedBlocks = blocks['accounts'].keys()
+    i = 0
+    for x in savedBlocks:
+        i = (i + 1)
+        # reset block
+        blockObject = blocks['accounts'][x]
+        blockObject['send']['processed'] = False
+        blockObject['receive']['processed'] = False
+        # update processed
+        blocks['accounts'][x] = blockObject
+
+    # save all blocks after processing
+    writeJson('blocks.json', blocks)
+
 # republish all receiveblocks
 def republishReceiveBlocks():
     hashes = []
-    accountsList = list(blocks['accounts'])
+    accountsList = blocks['accounts'].keys()
     for account in accountsList:
         hashes.push(blocks['accounts'][account]['receive']['hash'])
 
@@ -553,7 +572,7 @@ def republishReceiveBlocks():
 # republish all send blocks
 def republishSendBlocks():
     hashes = []
-    accountsList = list(blocks['accounts'])
+    accountsList = blocks['accounts'].keys()
     for account in accountsList:
         hashes.push(blocks['accounts'][account]['send']['hash'])
 
@@ -597,6 +616,8 @@ elif options.mode == 'recover':
     recover(options.account)
 elif options.mode == 'recoverAll':
     recoverAll()
+elif options.mode == 'resetProcessed':
+    resetProcessed()
 
 # save all blocks and accounts
 writeJson('blocks.json', blocks)
