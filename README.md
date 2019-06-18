@@ -34,6 +34,10 @@ and building 10 nano accounts.
 8. `-np` - port of the nano node that you would like to use, default is `55000`
 9. `-a` - account that you would like to recover.
 10. `-z` - provide zero proof of work, default is `False`
+11. `slam` - Variable TPS throttle, default is `False`
+12. `slam_time` - Define how often slam is decided, default `20` for 20 seconds
+
+Slam will not work unless `-tps` argument is specified. Slam is weighted towards the specified tps amount but it is randomly decided.
 
 ### launch modes
 
