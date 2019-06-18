@@ -5,6 +5,8 @@
 from io import BytesIO
 import json
 import pycurl
+from threading import Timer
+import random
 import argparse
 import sys
 import time
@@ -18,7 +20,10 @@ parser.add_argument('-s', '--size', type=int, help='Size of each transaction in 
 parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=10)
 parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='xrb_1brainb3zz81wmhxndsbrjb94hx3fhr1fyydmg6iresyk76f3k7y7jiazoji')
 parser.add_argument('-tps', '--tps', type=int, help='Throttle transactions per second during processing. 0 (default) will not throttle.', default=0)
-parser.add_argument('-m', '--mode', type=str, help='define what mode you would like', required=True)
+parser.add_argument('-slam', '--slam', type=bool, help='Variable throttle transactions per second during processing. false (default) will not vary.', default=False)
+parser.add_argument('-stime', '--slam_time', type=int, help='Define how often slam is decided', default=20)
+parser.add_argument('-m', '--mode', help='define what mode you would like', choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'republishSend', 'republishReceive', 'republishAll', 'recover', 'recoverAll', 'resetProcessed']
+)
 parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='127.0.0.1')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
 parser.add_argument('-a', '--account', type=str, help='Account that needs to be recovered', required=False)
@@ -27,6 +32,22 @@ parser.add_argument('-z', '--zero_work', type=str, help='Submits empty work', de
 options = parser.parse_args()
 
 SAVE_EVERY_N = options.save_num
+
+# add a circuit breaker variable
+global signaled
+signaled = False
+
+# global vars
+accounts = {'accounts':{}}
+blocks = {'accounts':{}}
+
+# tps counters
+throttle_tps = options.tps
+highest_tps = 0
+current_tps = 0
+average_tps = 0
+start = 0
+start_process = 0
 
 # read json file and decode it
 def readJson(filename):
@@ -38,21 +59,48 @@ def writeJson(filename, data):
     with open(filename, 'w') as json_file:
         json.dump(data, json_file)
 
-# add a circuit breaker variable
-global signaled
-signaled = False
+def slamScaler():
+	if not options.slam:
+		throttle_tps = options.tps
+		return
+	if options.tps == 0:
+		throttle_tps = 0
+		return
+	scales = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+	slamScale = random.choice(scales)
+	throttle_tps = options.tps + (100 * slamScale)
+	newSlam = ("New Slam: {0}").format(throttle_tps)
+	print(newSlam)
 
-# global vars
-accounts = {'accounts':{}}
-blocks = {'accounts':{}}
+class SlamTimer(object):
+    def __init__(self, interval, function, *args, **kwargs):
+        self._timer     = None
+        self.interval   = interval
+        self.function   = function
+        self.args       = args
+        self.kwargs     = kwargs
+        self.is_running = False
+        self.start()
 
-# tps counters
-highest_tps = 0
-current_tps = 0
-average_tps = 0
-start = 0
-start_process = 0
+    def _run(self):
+        if not options.slam:
+            self.stop()
+        self.is_running = False
+        self.start()
+        self.function(*self.args, **self.kwargs)
 
+    def start(self):
+        if not self.is_running:
+            self._timer = Timer(self.interval, self._run)
+            self._timer.start()
+            self.is_running = True
+
+    def stop(self):
+        self._timer.cancel()
+        self.is_running = False
+
+# variable tps slam every options.slam_time seconds
+slamThread = SlamTimer(options.slam_time, slamScaler)
 
 if os.path.exists('accounts.json'):
     accounts = readJson('accounts.json')
@@ -83,8 +131,8 @@ def tpsDelay():
     global start
     global start_process
     # delay next process if --tps is not 0, to throttle outgoing
-    if options.tps != 0:
-        while average_tps / (time.perf_counter() - start_process) > options.tps:
+    if throttle_tps != 0:
+        while average_tps / (time.perf_counter() - start_process) > throttle_tps:
             time.sleep(0.001)
 
 def communicateNode(rpc_command):
@@ -618,6 +666,9 @@ elif options.mode == 'recoverAll':
     recoverAll()
 elif options.mode == 'resetProcessed':
     resetProcessed()
+
+# end slam thread
+# slamThread.stop()
 
 # save all blocks and accounts
 writeJson('blocks.json', blocks)
