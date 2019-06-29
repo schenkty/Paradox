@@ -6,6 +6,7 @@ from io import BytesIO
 import json
 import pycurl
 from threading import Timer
+from threading import Thread
 import random
 import argparse
 import sys
@@ -58,6 +59,17 @@ def readJson(filename):
 def writeJson(filename, data):
     with open(filename, 'w') as json_file:
         json.dump(data, json_file)
+
+def chunkBlocks(seq, num):
+    avg = len(seq) / float(num)
+    out = []
+    last = 0.0
+
+    while last < len(seq):
+        out.append(seq[int(last):int(last + avg)])
+        last += avg
+
+    return out
 
 def slamScaler():
 	if not options.slam:
@@ -406,7 +418,7 @@ def buildSendBlocks():
             saveBlocks()
     writeJson('blocks.json', blocks)
 
-def processReceives(all = False):
+def processReceiveBlocks(all = False, blockSection = 0):
     global keys
     global blocks
 
@@ -421,7 +433,18 @@ def processReceives(all = False):
     start_process = time.perf_counter()
 
     # receive all blocks
-    savedBlocks = blocks['accounts'].keys()
+    savedBlocks = list(blocks['accounts'].keys())
+
+    if blockSection != 0:
+        if blockSection == 1:
+            savedBlocks = chunkBlocks(savedBlocks, 4)[0]
+        elif blockSection == 2:
+            savedBlocks = chunkBlocks(savedBlocks, 4)[1]
+        elif blockSection == 3:
+            savedBlocks = chunkBlocks(savedBlocks, 4)[2]
+        elif blockSection == 4:
+            savedBlocks = chunkBlocks(savedBlocks, 4)[3]
+
     i = 0
     for x in savedBlocks:
         i = (i + 1)
@@ -466,7 +489,7 @@ def processReceives(all = False):
         # calculate tps and print results
         tpsCalc()
 
-def processSends(all = False):
+def processSendBlocks(all = False, blockSection = 0):
     global keys
     global blocks
 
@@ -482,7 +505,18 @@ def processSends(all = False):
         start_process = time.perf_counter()
 
     # send all blocks
-    savedBlocks = blocks['accounts'].keys()
+    savedBlocks = list(blocks['accounts'].keys())
+
+    if blockSection != 0:
+        if blockSection == 1:
+            savedBlocks = chunkBlocks(savedBlocks, 4)[0]
+        elif blockSection == 2:
+            savedBlocks = chunkBlocks(savedBlocks, 4)[1]
+        elif blockSection == 3:
+            savedBlocks = chunkBlocks(savedBlocks, 4)[2]
+        elif blockSection == 4:
+            savedBlocks = chunkBlocks(savedBlocks, 4)[3]
+
     i = 0
     for x in savedBlocks:
         i = (i + 1)
@@ -526,6 +560,28 @@ def processSends(all = False):
     if all == False:
         # calculate tps and print results
         tpsCalc()
+
+def processSends(allBlocks = False):
+    # processSends(True)
+    thread1 = Thread(target = processSendBlocks, args = (allBlocks, 1))
+    thread2 = Thread(target = processSendBlocks, args = (allBlocks, 2))
+    thread3 = Thread(target = processSendBlocks, args = (allBlocks, 3))
+    thread4 = Thread(target = processSendBlocks, args = (allBlocks, 4))
+    thread1.start()
+    thread2.start()
+    thread3.start()
+    thread4.start()
+
+def processReceives(allBlocks = False):
+    # processReceives(True)
+    thread1 = Thread(target = processReceiveBlocks, args = (allBlocks, 1))
+    thread2 = Thread(target = processReceiveBlocks, args = (allBlocks, 2))
+    thread3 = Thread(target = processReceiveBlocks, args = (allBlocks, 3))
+    thread4 = Thread(target = processReceiveBlocks, args = (allBlocks, 4))
+    thread1.start()
+    thread2.start()
+    thread3.start()
+    thread4.start()
 
 def processAll():
     # receive all blocks
@@ -668,7 +724,7 @@ elif options.mode == 'resetProcessed':
     resetProcessed()
 
 # end slam thread
-# slamThread.stop()
+slamThread.stop()
 
 # save all blocks and accounts
 writeJson('blocks.json', blocks)
