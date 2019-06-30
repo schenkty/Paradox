@@ -23,8 +23,7 @@ parser.add_argument('-r', '--representative', type=str, help='Representative to 
 parser.add_argument('-tps', '--tps', type=int, help='Throttle transactions per second during processing. 0 (default) will not throttle.', default=0)
 parser.add_argument('-slam', '--slam', type=bool, help='Variable throttle transactions per second during processing. false (default) will not vary.', default=False)
 parser.add_argument('-stime', '--slam_time', type=int, help='Define how often slam is decided', default=20)
-parser.add_argument('-m', '--mode', help='define what mode you would like', choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'republishSend', 'republishReceive', 'republishAll', 'recover', 'recoverAll', 'resetProcessed']
-)
+parser.add_argument('-m', '--mode', help='define what mode you would like', choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce'])
 parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='127.0.0.1')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
 parser.add_argument('-a', '--account', type=str, help='Account that needs to be recovered', required=False)
@@ -604,94 +603,6 @@ def autoOnce():
     # process all blocks
     processAll()
 
-# recover single account
-def recover(account):
-    global keys
-    global blocks
-    if not account:
-        print("missing account")
-        return
-
-    key = findKey(account)
-
-    # pull info for our account
-    info_out = getInfo(account)
-
-    # if we have pending blocks, receive them
-    if int(info_out["pending"]) > 0:
-        receiveAllPending(key)
-        # update info for our account
-        info_out = getInfo(account)
-
-    # set previous block
-    prev = info_out["frontier"]
-    type = getHistory(account)["history"][0]["type"]
-    if type == 'send':
-        blocks['accounts'][account]['send']['hash'] = prev
-    elif type == 'receive':
-        blocks['accounts'][account]['receive']['hash'] = prev
-    writeJson('blocks.json', blocks)
-
-# reset all saved hashes and grab head blocks
-def recoverAll():
-    for x in keys:
-        # set account
-        account = x['account']
-        recover(account)
-    writeJson('blocks.json', blocks)
-
-def resetProcessed():
-    global keys
-    global blocks
-
-    # send all blocks
-    savedBlocks = blocks['accounts'].keys()
-    i = 0
-    for x in savedBlocks:
-        i = (i + 1)
-        # reset block
-        blockObject = blocks['accounts'][x]
-        blockObject['send']['processed'] = False
-        blockObject['receive']['processed'] = False
-        # update processed
-        blocks['accounts'][x] = blockObject
-
-    # save all blocks after processing
-    writeJson('blocks.json', blocks)
-
-# republish all receiveblocks
-def republishReceiveBlocks():
-    hashes = []
-    accountsList = blocks['accounts'].keys()
-    for account in accountsList:
-        hashes.push(blocks['accounts'][account]['receive']['hash'])
-
-    # clear from memory
-    accountList = []
-
-    for hash in hashes:
-        republish(hash)
-        print("republishing block {0}".format(hash))
-
-# republish all send blocks
-def republishSendBlocks():
-    hashes = []
-    accountsList = blocks['accounts'].keys()
-    for account in accountsList:
-        hashes.push(blocks['accounts'][account]['send']['hash'])
-
-    # clear from memory
-    accountList = []
-
-    for hash in hashes:
-        republish(hash)
-        print("republishing block {0}".format(hash))
-
-# republish all blocks
-def republishAll():
-    republishReceiveBlocks()
-    republishSendBlocks()
-
 if options.mode == 'buildAccounts':
     buildAccounts()
 elif options.mode == 'seedAccounts':
@@ -710,18 +621,6 @@ elif options.mode == 'processAll':
     processAll()
 elif options.mode == 'autoOnce':
     autoOnce()
-elif options.mode == 'republishSend':
-    republishSendBlocks()
-elif options.mode == 'republishReceive':
-    republishReceiveBlocks()
-elif options.mode == 'republishAll':
-    republishAll()
-elif options.mode == 'recover':
-    recover(options.account)
-elif options.mode == 'recoverAll':
-    recoverAll()
-elif options.mode == 'resetProcessed':
-    resetProcessed()
 
 # end slam thread
 slamThread.stop()
