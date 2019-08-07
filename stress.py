@@ -129,8 +129,6 @@ def tpsCalc():
     average_tps = average_tps / (time.perf_counter() - start_process)
 
     # print tps results
-    if highest_tps == 0:
-        highest_tps = 'N/A'
     results = ("Average transactions per second: {0}\n" +
            "Most transactions in 1 second: {1}").format(average_tps, highest_tps)
     print(results)
