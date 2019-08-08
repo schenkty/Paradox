@@ -472,15 +472,8 @@ def processReceiveBlocks(all = False, blockSection = 0):
         # update processed
         blocks['accounts'][x] = blockObject
 
-        # save during processing
-        if i%SAVE_EVERY_N == 0:
-            saveBlocks()
-
         # check if tps needs to throttle
         tpsDelay()
-
-    # save all blocks after processing
-    writeJson('blocks.json', blocks)
 
     if all == False:
         # calculate tps and print results
@@ -544,15 +537,8 @@ def processSendBlocks(all = False, blockSection = 0):
         # update processed
         blocks['accounts'][x] = blockObject
 
-        # save during processing
-        if i%SAVE_EVERY_N == 0:
-            saveBlocks()
-
         # check if tps needs to throttle
         tpsDelay()
-
-    # save all blocks after processing
-    writeJson('blocks.json', blocks)
 
     if all == False:
         # calculate tps and print results
@@ -568,6 +554,7 @@ def processSends(allBlocks = False):
     thread2.start()
     thread3.start()
     thread4.start()
+    saveBlocks()
 
 def processReceives(allBlocks = False):
     # processReceives(True)
@@ -579,6 +566,7 @@ def processReceives(allBlocks = False):
     thread2.start()
     thread3.start()
     thread4.start()
+    saveBlocks()
 
 def processAll():
     # receive all blocks
