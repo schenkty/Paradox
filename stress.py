@@ -324,13 +324,9 @@ def seedAccounts():
 
         # set seeded to true for destAccount
         accounts['accounts'][destAccount]['seeded'] = True
-        writeJson('accounts.json', accounts)
 
         print("Building Send Block {0}".format((i-1)))
         print("\nCreated block {0}".format(hash))
-
-        if i%SAVE_EVERY_N == 0:
-            saveBlocks()
     writeJson('blocks.json', blocks)
     writeJson('accounts.json', accounts)
 
