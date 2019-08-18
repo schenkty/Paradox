@@ -55,3 +55,4 @@ Slam will not work unless `-tps` argument is specified. Slam is weighted towards
 12. `republishAll` - republish all blocks
 13. `recover` - receive all pending blocks and reset specific account's previous block
 14. `recoverAll` - execute recover on all accounts
+15. `countAccounts` - return number of accounts built

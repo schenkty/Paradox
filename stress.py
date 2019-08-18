@@ -23,7 +23,7 @@ parser.add_argument('-r', '--representative', type=str, help='Representative to 
 parser.add_argument('-tps', '--tps', type=int, help='Throttle transactions per second during processing. 0 (default) will not throttle.', default=0)
 parser.add_argument('-slam', '--slam', type=bool, help='Variable throttle transactions per second during processing. false (default) will not vary.', default=False)
 parser.add_argument('-stime', '--slam_time', type=int, help='Define how often slam is decided', default=20)
-parser.add_argument('-m', '--mode', help='define what mode you would like', choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce'])
+parser.add_argument('-m', '--mode', help='define what mode you would like', choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts'])
 parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='127.0.0.1')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
 parser.add_argument('-a', '--account', type=str, help='Account that needs to be recovered', required=False)
@@ -267,6 +267,13 @@ def buildAccounts():
 
     writeJson('accounts.json', accounts)
     print("Fund Account {0}".format(list(accounts['accounts'])[0]))
+
+def getAccounts():
+    global accounts
+    keyNum = options.num_accounts
+
+    currentCount = len((list(accounts['accounts'])))
+    print("Accounts {0}".format(currentCount))
 
 def seedAccounts():
     global accounts
@@ -603,6 +610,8 @@ elif options.mode == 'processAll':
     processAll()
 elif options.mode == 'autoOnce':
     autoOnce()
+elif options.mode == 'countAccounts':
+    getAccounts()
 
 # end slam thread
 slamThread.stop()
