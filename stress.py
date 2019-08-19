@@ -119,6 +119,12 @@ if os.path.exists('accounts.json'):
 if os.path.exists('blocks.json'):
     blocks = readJson('blocks.json')
 
+def printTPS():
+    # print tps results
+    results = ("Average transactions per second: {0}\n" +
+           "Most transactions in 1 second: {1}").format(average_tps, highest_tps)
+    print(results)
+
 def tpsCalc():
     global highest_tps
     global current_tps
@@ -129,9 +135,10 @@ def tpsCalc():
     average_tps = average_tps / (time.perf_counter() - start_process)
 
     # print tps results
-    results = ("Average transactions per second: {0}\n" +
-           "Most transactions in 1 second: {1}").format(average_tps, highest_tps)
-    print(results)
+    printTPS()
+    # results = ("Average transactions per second: {0}\n" +
+    #        "Most transactions in 1 second: {1}").format(average_tps, highest_tps)
+    # print(results)
 
 def tpsDelay():
     global highest_tps
@@ -344,6 +351,15 @@ def buildReceiveBlocks():
     # receive all accounts with test raw
     i = 0
     accountList = list(accounts['accounts'])
+    keyNum = options.num_accounts
+    # keyNum = (keyNum - 1)
+    accountList = accountList[0:keyNum]
+    # for account in accountList:
+    #     i = (i + 1)
+    #
+    #
+    # print(i)
+
     for account in accountList:
         i = (i + 1)
         if i == 1:
@@ -385,9 +401,17 @@ def buildSendBlocks():
     global accounts
     global blocks
 
+    keyNum = options.num_accounts
     accountList = list(accounts['accounts'])
     # send all accounts with test raw
     i = 0
+    # keyNum = (keyNum - 1)
+    accountList = accountList[0:keyNum]
+    # for account in accountList:
+    #     i = (i + 1)
+    #
+    #
+    # print(i)
     for account in accountList:
         i = (i + 1)
         if i == 1:
@@ -548,7 +572,6 @@ def processSendBlocks(all = False, blockSection = 0):
         tpsCalc()
 
 def processSends(allBlocks = False):
-    # processSends(True)
     thread1 = Thread(target = processSendBlocks, args = (allBlocks, 1))
     thread2 = Thread(target = processSendBlocks, args = (allBlocks, 2))
     thread3 = Thread(target = processSendBlocks, args = (allBlocks, 3))
@@ -557,10 +580,10 @@ def processSends(allBlocks = False):
     thread2.start()
     thread3.start()
     thread4.start()
+    thread1.join()
     saveBlocks()
 
 def processReceives(allBlocks = False):
-    # processReceives(True)
     thread1 = Thread(target = processReceiveBlocks, args = (allBlocks, 1))
     thread2 = Thread(target = processReceiveBlocks, args = (allBlocks, 2))
     thread3 = Thread(target = processReceiveBlocks, args = (allBlocks, 3))
@@ -569,6 +592,7 @@ def processReceives(allBlocks = False):
     thread2.start()
     thread3.start()
     thread4.start()
+    thread1.join()
     saveBlocks()
 
 def processAll():
