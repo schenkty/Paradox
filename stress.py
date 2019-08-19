@@ -348,17 +348,13 @@ def buildReceiveBlocks():
     global accounts
     global blocks
 
+    keyNum = options.num_accounts
+    accountList = list(accounts['accounts'])
     # receive all accounts with test raw
     i = 0
-    accountList = list(accounts['accounts'])
-    keyNum = options.num_accounts
-    # keyNum = (keyNum - 1)
+
+    # we may only want a subset of accounts
     accountList = accountList[0:keyNum]
-    # for account in accountList:
-    #     i = (i + 1)
-    #
-    #
-    # print(i)
 
     for account in accountList:
         i = (i + 1)
@@ -405,13 +401,10 @@ def buildSendBlocks():
     accountList = list(accounts['accounts'])
     # send all accounts with test raw
     i = 0
-    # keyNum = (keyNum - 1)
+
+    # we may only want a subset of accounts
     accountList = accountList[0:keyNum]
-    # for account in accountList:
-    #     i = (i + 1)
-    #
-    #
-    # print(i)
+
     for account in accountList:
         i = (i + 1)
         if i == 1:
@@ -458,6 +451,10 @@ def processReceiveBlocks(all = False, blockSection = 0):
 
     # receive all blocks
     savedBlocks = list(blocks['accounts'].keys())
+
+    keyNum = options.num_accounts
+    # we may only want a subset of accounts
+    savedBlocks = savedBlocks[0:keyNum]
 
     if blockSection != 0:
         if blockSection == 1:
@@ -523,6 +520,10 @@ def processSendBlocks(all = False, blockSection = 0):
 
     # send all blocks
     savedBlocks = list(blocks['accounts'].keys())
+
+    keyNum = options.num_accounts
+    # we may only want a subset of accounts
+    savedBlocks = savedBlocks[0:keyNum]
 
     if blockSection != 0:
         if blockSection == 1:
