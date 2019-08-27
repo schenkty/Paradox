@@ -136,9 +136,6 @@ def tpsCalc():
 
     # print tps results
     printTPS()
-    # results = ("Average transactions per second: {0}\n" +
-    #        "Most transactions in 1 second: {1}").format(average_tps, highest_tps)
-    # print(results)
 
 def tpsDelay():
     global highest_tps
