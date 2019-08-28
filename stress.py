@@ -24,7 +24,7 @@ parser.add_argument('-tps', '--tps', type=int, help='Throttle transactions per s
 parser.add_argument('-slam', '--slam', type=bool, help='Variable throttle transactions per second during processing. false (default) will not vary.', default=False)
 parser.add_argument('-stime', '--slam_time', type=int, help='Define how often slam is decided', default=20)
 parser.add_argument('-m', '--mode', help='define what mode you would like', choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts'])
-parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='127.0.0.1')
+parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='[::1]')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
 parser.add_argument('-a', '--account', type=str, help='Account that needs to be recovered', required=False)
 parser.add_argument('-z', '--zero_work', type=str, help='Submits empty work', default='False')
