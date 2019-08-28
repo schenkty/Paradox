@@ -198,7 +198,7 @@ def getHistory(account):
 def process(block):
     if 'block' in block:
         block = block['block']
-    return communicateNode({'action': 'process', 'block': block})
+    return communicateNode({'action': 'process', 'block': block, 'watch_work': 'false'})
 
 def getInfo(account):
     return communicateNode({'action': 'account_info', 'account': account, 'count': 1, 'pending': 'true' })
