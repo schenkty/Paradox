@@ -134,6 +134,9 @@ def printTPS():
            "Most transactions in 1 second: {1}").format(average_tps, highest_tps)
     print(results)
 
+def findKey(account):
+    return accounts['accounts'][account]['key']
+
 def tpsCalc():
     global highest_tps
     global current_tps
@@ -628,13 +631,15 @@ def recover(account):
     global keys
     global blocks
     if not account:
-        print("missing account")
         return
 
     key = findKey(account)
 
     # pull info for our account
     info_out = getInfo(account)
+
+    if not 'frontier' in info_out:
+        return
 
     # if we have pending blocks, receive them
     if int(info_out["pending"]) > 0:
@@ -652,12 +657,12 @@ def recover(account):
 
 # reset all saved hashes and grab head blocks
 def recoverAccounts():
-    keys = list(blocks['accounts'].keys())
-    
-    for x in keys:
-        # set account
-        account = x['account']
+    accounts = list(blocks['accounts'].keys())
+
+    for account in accounts:
+        # recover account
         recover(account)
+
     buildSendBlocks()
     processSends()
     print("Accounts Recovered")
