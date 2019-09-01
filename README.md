@@ -40,10 +40,9 @@ An example of proper subset usage is the following:<br />
 6. `-m` - define what mode you would like to use
 7. `-nu` - url of the nano node that you would like to use, default is `127.0.0.1`
 8. `-np` - port of the nano node that you would like to use, default is `55000`
-9. `-a` - account that you would like to recover.
-10. `-z` - provide zero proof of work, default is `False`
-11. `slam` - Variable TPS throttle, default is `False`
-12. `slam_time` - Define how often slam is decided, default `20` for 20 seconds
+9. `-z` - provide zero proof of work, default is `False`
+10. `slam` - Variable TPS throttle, default is `False`
+11. `slam_time` - Define how often slam is decided, default `20` for 20 seconds
 
 Slam will not work unless `-tps` argument is specified. Slam is weighted towards the specified tps amount but it is randomly decided.
 
@@ -58,9 +57,5 @@ Slam will not work unless `-tps` argument is specified. Slam is weighted towards
 7. `processReceive` - process all receive blocks
 8. `processAll` - process all blocks for both receive and send
 9. `autoOnce` - run through buildAll and processAll once
-10. `republishSend` - republish all send blocks
-11. `republishReceive` - republish all receive blocks
-12. `republishAll` - republish all blocks
-13. `recover` - receive all pending blocks and reset specific account's previous block
-14. `recoverAll` - execute recover on all accounts
-15. `countAccounts` - return number of accounts built
+10. `countAccounts` - return number of accounts built
+11. `recover` - receive all pending blocks for every account, build a batch of send blocks and process send blocks

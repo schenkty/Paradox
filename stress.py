@@ -18,6 +18,7 @@ parser = argparse.ArgumentParser(
     description="Stress test for NANO network. Sends 10 raw each to itself ")
 parser.add_argument('-n', '--num-accounts', type=int, help='Number of accounts', required=True)
 parser.add_argument('-s', '--size', type=int, help='Size of each transaction in Nano raw', default=10)
+<<<<<<< HEAD
 parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=1000)
 parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='xrb_1brainb3zz81wmhxndsbrjb94hx3fhr1fyydmg6iresyk76f3k7y7jiazoji')
 parser.add_argument('-tps', '--tps', type=int, help='Throttle transactions per second during processing. 0 (default) will not throttle.', default=0)
@@ -25,8 +26,16 @@ parser.add_argument('-slam', '--slam', type=bool, help='Variable throttle transa
 parser.add_argument('-stime', '--slam_time', type=int, help='Define how often slam is decided', default=20)
 parser.add_argument('-m', '--mode', help='define what mode you would like', choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts'])
 parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='[::1]')
+=======
+parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=10)
+parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='nano_1brainb3zz81wmhxndsbrjb94hx3fhr1fyydmg6iresyk76f3k7y7jiazoji')
+parser.add_argument('-tps', '--tps', type=int, help='Throttle transactions per second during processing. 0 (default) will not throttle.', default=0)
+parser.add_argument('-slam', '--slam', type=bool, help='Variable throttle transactions per second during processing. false (default) will not vary.', default=False)
+parser.add_argument('-stime', '--slam_time', type=int, help='Define how often slam is decided', default=20)
+parser.add_argument('-m', '--mode', help='define what mode you would like', choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts', 'recover'])
+parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='127.0.0.1')
+>>>>>>> cf0904f3adfead5e49b38bdd28fb72561886da47
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
-parser.add_argument('-a', '--account', type=str, help='Account that needs to be recovered', required=False)
 parser.add_argument('-z', '--zero_work', type=str, help='Submits empty work', default='False')
 
 options = parser.parse_args()
@@ -614,6 +623,45 @@ def autoOnce():
     # process all blocks
     processAll()
 
+# recover single account
+def recover(account):
+    global keys
+    global blocks
+    if not account:
+        print("missing account")
+        return
+
+    key = findKey(account)
+
+    # pull info for our account
+    info_out = getInfo(account)
+
+    # if we have pending blocks, receive them
+    if int(info_out["pending"]) > 0:
+        receiveAllPending(key)
+        # update info for our account
+        info_out = getInfo(account)
+
+    # set previous block
+    prev = info_out["frontier"]
+    type = getHistory(account)["history"][0]["type"]
+    if type == 'send':
+        blocks['accounts'][account]['send']['hash'] = prev
+    elif type == 'receive':
+        blocks['accounts'][account]['receive']['hash'] = prev
+
+# reset all saved hashes and grab head blocks
+def recoverAccounts():
+    for x in keys:
+        # set account
+        account = x['account']
+        recover(account)
+    buildSendBlocks()
+    processSends()
+    print("Accounts Recovered")
+    writeJson('blocks.json', blocks)
+    writeJson('accounts.json', accounts)
+
 if options.mode == 'buildAccounts':
     buildAccounts()
 elif options.mode == 'seedAccounts':
@@ -634,6 +682,8 @@ elif options.mode == 'autoOnce':
     autoOnce()
 elif options.mode == 'countAccounts':
     getAccounts()
+elif options.mode == 'recover':
+    recoverAccounts()
 
 # end slam thread
 slamThread.stop()
