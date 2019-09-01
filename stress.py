@@ -642,6 +642,8 @@ def recover(account):
 
 # reset all saved hashes and grab head blocks
 def recoverAccounts():
+    keys = list(blocks['accounts'].keys())
+    
     for x in keys:
         # set account
         account = x['account']
