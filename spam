@@ -76,3 +76,13 @@ if (($SET == 4));then
     python3 stress.py -m processAll -n 25000 -tps $TPS
   fi
 fi
+
+if (($SET == 5));then
+  cd set5_150k
+  if (($TYPE == 1));then
+    python3 stress.py -m buildAll -n 150000 -tps $TPS
+  fi
+  if (($TYPE == 2));then
+    python3 stress.py -m processAll -n 150000 -tps $TPS
+  fi
+fi

@@ -18,23 +18,13 @@ parser = argparse.ArgumentParser(
     description="Stress test for NANO network. Sends 10 raw each to itself ")
 parser.add_argument('-n', '--num-accounts', type=int, help='Number of accounts', required=True)
 parser.add_argument('-s', '--size', type=int, help='Size of each transaction in Nano raw', default=10)
-<<<<<<< HEAD
 parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=1000)
-parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='xrb_1brainb3zz81wmhxndsbrjb94hx3fhr1fyydmg6iresyk76f3k7y7jiazoji')
-parser.add_argument('-tps', '--tps', type=int, help='Throttle transactions per second during processing. 0 (default) will not throttle.', default=0)
-parser.add_argument('-slam', '--slam', type=bool, help='Variable throttle transactions per second during processing. false (default) will not vary.', default=False)
-parser.add_argument('-stime', '--slam_time', type=int, help='Define how often slam is decided', default=20)
-parser.add_argument('-m', '--mode', help='define what mode you would like', choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts'])
-parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='[::1]')
-=======
-parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=10)
 parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='nano_1brainb3zz81wmhxndsbrjb94hx3fhr1fyydmg6iresyk76f3k7y7jiazoji')
 parser.add_argument('-tps', '--tps', type=int, help='Throttle transactions per second during processing. 0 (default) will not throttle.', default=0)
 parser.add_argument('-slam', '--slam', type=bool, help='Variable throttle transactions per second during processing. false (default) will not vary.', default=False)
 parser.add_argument('-stime', '--slam_time', type=int, help='Define how often slam is decided', default=20)
 parser.add_argument('-m', '--mode', help='define what mode you would like', choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts', 'recover'])
-parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='127.0.0.1')
->>>>>>> cf0904f3adfead5e49b38bdd28fb72561886da47
+parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='[::1]')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
 parser.add_argument('-z', '--zero_work', type=str, help='Submits empty work', default='False')
 
@@ -189,6 +179,11 @@ def communicateNode(rpc_command):
 def saveBlocks():
     writeJson('blocks.json', blocks)
     print('\n(SAVE) Blocks have been written to blocks.json\n')
+
+# standard function to save accounts and print
+def saveAccounts():
+    writeJson('accounts.json', accounts)
+    print('\n(SAVE) Accounts have been written to accounts.json\n')
 
 # generate new key pair
 def getKeyPair():
@@ -350,6 +345,11 @@ def seedAccounts():
 
         print("Building Send Block {0}".format((i-1)))
         print("\nCreated block {0}".format(hash))
+
+        if i%SAVE_EVERY_N == 0:
+            saveBlocks()
+            saveAccounts()
+
     writeJson('blocks.json', blocks)
     writeJson('accounts.json', accounts)
 
