@@ -28,7 +28,7 @@ An example of proper subset usage is the following:<br />
 
 `autoOnce` does a full build cycle and process cycle which allows you to safely adjust the accounts used.
 
-4. You can only increase the number of accounts (`-n`) during a send cycle (pending receive) for current accounts. If you add new accounts outside of this send cycle (after a receive and before a send), you will corrupt the accounts and their block orders. To recover this, call the mode - recoverAll.
+4. You can only increase the number of accounts (`-n`) during a send cycle (pending receive) for current accounts. If you add new accounts outside of this send cycle (after a receive and before a send), you will corrupt the accounts and their block orders. To recover this, call the mode - recover. The recover procedure must be done after "process" and be followed by "build".
 
 ### launch arguments
 
