@@ -14,7 +14,6 @@ import sys
 import time
 import signal
 import os.path
-from collections import OrderedDict
 
 parser = argparse.ArgumentParser(
     description="Stress test for NANO network. Sends 10 raw each to itself ")
