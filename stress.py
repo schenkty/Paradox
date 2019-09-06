@@ -4,6 +4,7 @@
 # import required packages
 from io import BytesIO
 import json
+import csv
 import pycurl
 from threading import Timer
 from threading import Thread
@@ -13,6 +14,7 @@ import sys
 import time
 import signal
 import os.path
+from collections import OrderedDict
 
 parser = argparse.ArgumentParser(
     description="Stress test for NANO network. Sends 10 raw each to itself ")
@@ -40,6 +42,12 @@ signaled = False
 accounts = {'accounts':{}}
 blocks = {'accounts':{}}
 
+# keep track of number of built and processed blocks
+buildReceiveCount = 0
+buildSendCount = 0
+processSendCount = 0
+processReceiveCount = 0
+
 # tps counters
 throttle_tps = options.tps
 highest_tps = 0
@@ -47,6 +55,9 @@ current_tps = 0
 average_tps = 0
 start = 0
 start_process = 0
+
+# custom
+threadDelay = 1 # delay after doing multithreading receive or send to wait for processes to finnish
 
 # read json file and decode it
 def readJson(filename):
@@ -57,6 +68,16 @@ def readJson(filename):
 def writeJson(filename, data):
     with open(filename, 'w') as json_file:
         json.dump(data, json_file)
+
+def writeCSV(filename, data):
+    with open(filename, 'w') as c:
+        c.write("") # empty file
+    c.close()
+    for key in data:
+        with open('output.csv', 'a') as c:
+            writer = csv.writer(c)
+            writer.writerow(data[key])
+        c.close()
 
 def chunkBlocks(seq, num):
     avg = len(seq) / float(num)
@@ -264,7 +285,7 @@ def receiveAllPending(key):
 
 def buildAccounts():
     global accounts
-    keyNum = options.num_accounts
+    keyNum = options.num_accounts + 1
 
     currentCount = len((list(accounts['accounts'])))
     keyNum = (keyNum - currentCount)
@@ -281,7 +302,7 @@ def buildAccounts():
 
 def getAccounts():
     global accounts
-    keyNum = options.num_accounts
+    keyNum = options.num_accounts + 1
 
     currentCount = len((list(accounts['accounts'])))
     print("Accounts {0}".format(currentCount))
@@ -290,6 +311,7 @@ def seedAccounts():
     global accounts
     global blocks
     prev = None
+    rpcTimings = {}
 
     # pull first account/key pair object from keys array
     accountList = list(accounts['accounts'])
@@ -319,26 +341,38 @@ def seedAccounts():
             continue
 
         seeded = accounts['accounts'][destAccount]['seeded']
-
         if seeded == True:
             print("Account has already been seeded. Skipping...")
             continue
 
         # calculate the state block balance
-        adjustedbal = str(int(info_out['balance']) - options.size * (i + 1))
+        adjustedbal = str(int(info_out['balance']) - options.size * (i - 1))
 
         # build receive block
+        blockTimeStart = time.perf_counter() # measure the time taken for RPC call
         block_out = generateBlock(mainKey, firstAccount, adjustedbal, prev, destAccount)
+        blockTime = time.perf_counter() - blockTimeStart
 
+        processTimeStart = time.perf_counter() # measure the time taken for RPC call
         hash = process(block_out)["hash"]
+        processTime = time.perf_counter() - processTimeStart
+
         blockObject = {'send': {'hash': hash}}
         blocks['accounts'][destAccount] = blockObject
 
         # save block as previous
         prev = block_out["hash"]
 
+        """
         # process current block
         process(block_out)
+        """
+
+        group = []
+        group.append(i-1)
+        group.append(blockTime)
+        group.append(processTime)
+        rpcTimings[''+str(i-1)] = group
 
         # set seeded to true for destAccount
         accounts['accounts'][destAccount]['seeded'] = True
@@ -352,12 +386,16 @@ def seedAccounts():
 
     writeJson('blocks.json', blocks)
     writeJson('accounts.json', accounts)
+    writeCSV('seedRPCTimings.csv', rpcTimings)
 
 def buildReceiveBlocks():
     global accounts
     global blocks
+    global buildReceiveCount
 
-    keyNum = options.num_accounts
+    buildReceiveCount = 0
+
+    keyNum = options.num_accounts + 1
     accountList = list(accounts['accounts'])
     # receive all accounts with test raw
     i = 0
@@ -379,6 +417,12 @@ def buildReceiveBlocks():
         newBalance = options.size
 
         if 'send' in blockObject:
+            # skip blocks that were already built
+            if 'processed' in blockObject["send"]:
+                if blockObject["send"]['processed'] == False:
+                    print("Already built receive")
+                    continue
+
             prev = blockObject["send"]["hash"]
 
             if 'block' in blockObject["send"]:
@@ -386,6 +430,12 @@ def buildReceiveBlocks():
                 newBalance = str(int(sendBal["balance"]) + options.size)
 
         if 'receive' in blockObject:
+            # skip blocks that were already built
+            if 'processed' in blockObject["receive"]:
+                if blockObject["receive"]['processed'] == False:
+                    print("Already built receive")
+                    continue
+
             previous = prev
 
         # build receive block
@@ -397,6 +447,7 @@ def buildReceiveBlocks():
         blocks['accounts'][account] = blockObject
         print("Building Receive Block {0}".format((i-1)))
         print("\nCreated block {0}".format(block_out['hash']))
+        buildReceiveCount += 1
 
         if i%SAVE_EVERY_N == 0:
             saveBlocks()
@@ -405,8 +456,11 @@ def buildReceiveBlocks():
 def buildSendBlocks():
     global accounts
     global blocks
+    global buildSendCount
 
-    keyNum = options.num_accounts
+    buildSendCount = 0
+
+    keyNum = options.num_accounts + 1
     accountList = list(accounts['accounts'])
     # send all accounts with test raw
     i = 0
@@ -426,9 +480,22 @@ def buildSendBlocks():
         newBalance = 0
 
         if 'receive' in blockObject:
+            # skip receive blocks that has not been built yet
+            if 'processed' in blockObject["receive"]:
+                if blockObject["receive"]['processed'] == True:
+                    print("Receive not built yet")
+                    continue
+
             previous = blockObject['receive']["hash"]
             receiveBal = json.loads(blockObject["receive"]["block"])
             newBalance = str(int(receiveBal["balance"]) - options.size)
+
+        # skip building if already built
+        if 'send' in blockObject:
+            if 'processed' in blockObject["send"]:
+                if blockObject["send"]['processed'] == False:
+                    print("Already built send")
+                    continue
 
         # build send block
         block_out = generateBlock(key, account, newBalance, previous, account)
@@ -439,6 +506,7 @@ def buildSendBlocks():
         blocks['accounts'][account] = blockObject
         print("Building Send Block {0}".format((i-1)))
         print("\nCreated block {0}".format(block_out['hash']))
+        buildSendCount += 1
 
         if i%SAVE_EVERY_N == 0:
             saveBlocks()
@@ -454,6 +522,7 @@ def processReceiveBlocks(all = False, blockSection = 0):
     global average_tps
     global start
     global start_process
+    global processReceiveCount
 
     start = time.perf_counter()
     start_process = time.perf_counter()
@@ -461,7 +530,7 @@ def processReceiveBlocks(all = False, blockSection = 0):
     # receive all blocks
     savedBlocks = list(blocks['accounts'].keys())
 
-    keyNum = options.num_accounts
+    keyNum = options.num_accounts + 1
     # we may only want a subset of accounts
     savedBlocks = savedBlocks[0:keyNum]
 
@@ -479,8 +548,9 @@ def processReceiveBlocks(all = False, blockSection = 0):
     for x in savedBlocks:
         i = (i + 1)
 
-        # skip blocks that were already processed
+        # skip blocks that were already processed or if not built
         if blocks['accounts'][x]['receive']['processed'] == True:
+            print("Already processed receive")
             continue
 
         # increase average_tps and current_tps
@@ -500,7 +570,14 @@ def processReceiveBlocks(all = False, blockSection = 0):
         blockObject['receive']['processed'] = True
         print("block {0}".format((i-1)))
         print("Processing block {0}".format(block['hash']))
-        process(block)
+        result = process(block)
+        if 'hash' in result:
+            if len(result['hash']) == 64:
+                processReceiveCount += 1
+            else:
+                print(result)
+        else:
+            print(result)
 
         # update processed
         blocks['accounts'][x] = blockObject
@@ -522,6 +599,7 @@ def processSendBlocks(all = False, blockSection = 0):
     global average_tps
     global start
     global start_process
+    global processSendCount
 
     if all == False:
         start = time.perf_counter()
@@ -530,7 +608,7 @@ def processSendBlocks(all = False, blockSection = 0):
     # send all blocks
     savedBlocks = list(blocks['accounts'].keys())
 
-    keyNum = options.num_accounts
+    keyNum = options.num_accounts + 1
     # we may only want a subset of accounts
     savedBlocks = savedBlocks[0:keyNum]
 
@@ -548,8 +626,9 @@ def processSendBlocks(all = False, blockSection = 0):
     for x in savedBlocks:
         i = (i + 1)
 
-        # skip blocks that were already processed
+        # skip blocks that were already processed or if not built
         if blocks['accounts'][x]['send']['processed'] == True:
+            print("Already processed send")
             continue
 
         # increase average_tps and current_tps
@@ -569,7 +648,14 @@ def processSendBlocks(all = False, blockSection = 0):
         blockObject['send']['processed'] = True
         print("block {0}".format((i-1)))
         print("Processing block {0}".format(block['hash']))
-        process(block)
+        result = process(block)
+        if 'hash' in result:
+            if len(result['hash']) == 64:
+                processSendCount += 1
+            else:
+                print(result)
+        else:
+            print(result)
 
         # update processed
         blocks['accounts'][x] = blockObject
@@ -591,6 +677,14 @@ def processSends(allBlocks = False):
     thread3.start()
     thread4.start()
     thread1.join()
+    """
+    # single sequential thread for testing
+    processSendBlocks(allBlocks, 1)
+    processSendBlocks(allBlocks, 2)
+    processSendBlocks(allBlocks, 3)
+    processSendBlocks(allBlocks, 4)
+    """
+    time.sleep(threadDelay) # wait for threads or the printing will come in wrong order
     saveBlocks()
 
 def processReceives(allBlocks = False):
@@ -603,22 +697,42 @@ def processReceives(allBlocks = False):
     thread3.start()
     thread4.start()
     thread1.join()
+    """
+    # single sequential thread for testing
+    processReceiveBlocks(allBlocks, 1)
+    processReceiveBlocks(allBlocks, 2)
+    processReceiveBlocks(allBlocks, 3)
+    processReceiveBlocks(allBlocks, 4)
+    """
+    time.sleep(threadDelay) # wait for threads or the printing will come in wrong order
     saveBlocks()
 
 def processAll():
+    global processReceiveCount
+    global processSendCount
+
+    processReceiveCount = 0
+    processSendCount = 0
+
     # receive all blocks
     processReceives(True)
     # send all blocks
     processSends(True)
 
+    totalTime = time.perf_counter() - start_process - (threadDelay * 2)
+
     # calculate tps and print results
     tpsCalc()
+    print("Processed " + str(processReceiveCount) + " receive blocks and " + str(processSendCount) + " send blocks")
+    print("Total time: " + str(totalTime) + " seconds")
 
 def buildAll():
     # build all receive blocks
     buildReceiveBlocks()
     # build all send blocks
     buildSendBlocks()
+
+    print("Built " + str(buildReceiveCount) + " receive blocks and " + str(buildSendCount) + " send blocks")
 
 def autoOnce():
     # build all blocks
@@ -654,6 +768,7 @@ def recover(account):
         blocks['accounts'][account]['send']['hash'] = prev
     elif type == 'receive':
         blocks['accounts'][account]['receive']['hash'] = prev
+        blocks['accounts'][account]['receive']['processed'] = False
 
 # reset all saved hashes and grab head blocks
 def recoverAccounts():
@@ -665,6 +780,20 @@ def recoverAccounts():
 
     buildSendBlocks()
     processSends()
+
+    # reset the process state or receive blocks can't be built
+    for account in accounts:
+        if not account:
+            continue
+        # pull info for our account
+        info_out = getInfo(account)
+        if not 'frontier' in info_out:
+            continue
+
+        type = getHistory(account)["history"][0]["type"]
+        if type == 'receive':
+            blocks['accounts'][account]['receive']['processed'] = True
+
     print("Accounts Recovered")
     writeJson('blocks.json', blocks)
     writeJson('accounts.json', accounts)
@@ -677,12 +806,20 @@ elif options.mode == 'buildAll':
     buildAll()
 elif options.mode == 'buildSend':
     buildSendBlocks()
+    print("Built " + str(buildSendCount) + " send blocks")
 elif options.mode == 'buildReceive':
     buildReceiveBlocks()
+    print("Built " + str(buildReceiveCount) + " receive blocks")
 elif options.mode == 'processSend':
+    processSendCount = 0
     processSends()
+    time.sleep(1)
+    print("Processed " + str(processSendCount) + " send blocks")
 elif options.mode == 'processReceive':
+    processReceiveCount = 0
     processReceives()
+    time.sleep(1)
+    print("Processed " + str(processReceiveCount) + " receive blocks")
 elif options.mode == 'processAll':
     processAll()
 elif options.mode == 'autoOnce':
