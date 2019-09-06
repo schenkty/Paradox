@@ -73,7 +73,7 @@ def writeCSV(filename, data):
         c.write("") # empty file
     c.close()
     for key in data:
-        with open('output.csv', 'a') as c:
+        with open(filename, 'a') as c:
             writer = csv.writer(c)
             writer.writerow(data[key])
         c.close()
