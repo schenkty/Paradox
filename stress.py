@@ -772,6 +772,16 @@ def recover(account):
     if not account:
         return
 
+    # ignore processed blocks because they don't need recovering
+    if 'receive' in blocks['accounts'][account]:
+        if 'processed' in blocks['accounts'][account]['receive']:
+            if blocks['accounts'][account]['receive']['processed'] == True:
+                return
+    if 'send' in blocks['accounts'][account]:
+        if 'processed' in blocks['accounts'][account]['send']:
+            if blocks['accounts'][account]['send']['processed'] == True:
+                return
+
     key = findKey(account)
 
     # pull info for our account
