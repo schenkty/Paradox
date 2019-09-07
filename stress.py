@@ -69,16 +69,6 @@ def writeJson(filename, data):
     with open(filename, 'w') as json_file:
         json.dump(data, json_file)
 
-def writeCSV(filename, data):
-    with open(filename, 'w') as c:
-        c.write("") # empty file
-    c.close()
-    for key in data:
-        with open(filename, 'a') as c:
-            writer = csv.writer(c)
-            writer.writerow(data[key])
-        c.close()
-
 def chunkBlocks(seq, num):
     avg = len(seq) / float(num)
     out = []
@@ -363,11 +353,7 @@ def seedAccounts():
         # save block as previous
         prev = block_out["hash"]
 
-        group = []
-        group.append(i-1)
-        group.append(blockTime)
-        group.append(processTime)
-        rpcTimings[''+str(i-1)] = group
+        rpcTimings[str(i-1)] = {'block_create_time':blockTime, 'process_time':processTime}
 
         # set seeded to true for destAccount
         accounts['accounts'][destAccount]['seeded'] = True
@@ -382,7 +368,7 @@ def seedAccounts():
 
     writeJson('blocks.json', blocks)
     writeJson('accounts.json', accounts)
-    writeCSV('seedRPCTimings.csv', rpcTimings)
+    writeJson('seedRPCTimings.json', rpcTimings)
 
 def buildReceiveBlocks():
     global accounts
