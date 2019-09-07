@@ -14,6 +14,7 @@ import sys
 import time
 import signal
 import os.path
+from collections import defaultdict
 
 parser = argparse.ArgumentParser(
     description="Stress test for NANO network. Sends 10 raw each to itself ")
@@ -92,6 +93,16 @@ def slamScaler():
 	throttle_tps = options.tps + (100 * slamScale)
 	newSlam = ("New Slam: {0}").format(throttle_tps)
 	print(newSlam)
+
+# allow multidimentional dictionaries. Initialize: newDict = nestedDict(2, float)
+def nestedDict(n, type):
+    if n == 1:
+        return defaultdict(type)
+    else:
+        return defaultdict(lambda: nestedDict(n-1, type))
+
+# collect failed blocks
+failedBlocks = nestedDict(2, str)
 
 class SlamTimer(object):
     def __init__(self, interval, function, *args, **kwargs):
@@ -190,6 +201,11 @@ def communicateNode(rpc_command):
 def saveBlocks():
     writeJson('blocks.json', blocks)
     print('\n(SAVE) Blocks have been written to blocks.json\n')
+
+# standard function to save failed blocks and print
+def saveFailedBlocks():
+    writeJson('failedBlocks.json', failedBlocks)
+    print('(SAVE) Failed blocks have been written to failedBlocks.json\n')
 
 # standard function to save accounts and print
 def saveAccounts():
@@ -505,6 +521,7 @@ def processReceiveBlocks(all = False, blockSection = 0):
     global start
     global start_process
     global processReceiveCount
+    global failedBlocks
 
     start = time.perf_counter()
     start_process = time.perf_counter()
@@ -549,18 +566,27 @@ def processReceiveBlocks(all = False, blockSection = 0):
         # process block
         blockObject = blocks['accounts'][x]
         block = blockObject['receive']
-        blockObject['receive']['processed'] = True
         print("block {0}".format((i-1)))
         print("Processing block {0}".format(block['hash']))
         result = process(block)
+
+        failed = False # indicate if a block has failed
         if 'hash' in result:
             if len(result['hash']) == 64:
                 processReceiveCount += 1
             else:
+                failed = True
+                failedBlocks[x]['receive'] = {'hash': block['hash'], 'result': result}
                 print(result)
         else:
+            failed = True
+            failedBlocks[x]['receive'] = {'hash': block['hash'], 'result': result}
             print(result)
 
+        if failed:
+            blockObject['receive']['processed'] = False
+        else:
+            blockObject['receive']['processed'] = True
         # update processed
         blocks['accounts'][x] = blockObject
 
@@ -582,6 +608,7 @@ def processSendBlocks(all = False, blockSection = 0):
     global start
     global start_process
     global processSendCount
+    global failedBlocks
 
     if all == False:
         start = time.perf_counter()
@@ -627,17 +654,27 @@ def processSendBlocks(all = False, blockSection = 0):
         # process block
         blockObject = blocks['accounts'][x]
         block = blockObject['send']
-        blockObject['send']['processed'] = True
         print("block {0}".format((i-1)))
         print("Processing block {0}".format(block['hash']))
         result = process(block)
+
+        failed = False # indicate if a block has failed
         if 'hash' in result:
             if len(result['hash']) == 64:
                 processSendCount += 1
             else:
+                failed = True
+                failedBlocks[x]['send'] = {'hash': block['hash'], 'result': result}
                 print(result)
         else:
+            failed = True
+            failedBlocks[x]['send'] = {'hash': block['hash'], 'result': result}
             print(result)
+
+        if failed:
+            blockObject['send']['processed'] = False
+        else:
+            blockObject['send']['processed'] = True
 
         # update processed
         blocks['accounts'][x] = blockObject
@@ -668,6 +705,7 @@ def processSends(allBlocks = False):
     """
     time.sleep(threadDelay) # wait for threads or the printing will come in wrong order
     saveBlocks()
+    saveFailedBlocks()
 
 def processReceives(allBlocks = False):
     thread1 = Thread(target = processReceiveBlocks, args = (allBlocks, 1))
@@ -688,6 +726,7 @@ def processReceives(allBlocks = False):
     """
     time.sleep(threadDelay) # wait for threads or the printing will come in wrong order
     saveBlocks()
+    saveFailedBlocks()
 
 def processAll():
     global processReceiveCount
@@ -754,6 +793,7 @@ def recover(account):
 
 # reset all saved hashes and grab head blocks
 def recoverAccounts():
+    global processSendCount
     accounts = list(blocks['accounts'].keys())
 
     for account in accounts:
@@ -761,6 +801,7 @@ def recoverAccounts():
         recover(account)
 
     buildSendBlocks()
+    processSendCount = 0
     processSends()
 
     # reset the process state or receive blocks can't be built
@@ -776,6 +817,8 @@ def recoverAccounts():
         if type == 'receive':
             blocks['accounts'][account]['receive']['processed'] = True
 
+    time.sleep(1)
+    print("Processed " + str(processSendCount) + " send blocks")
     print("Accounts Recovered")
     writeJson('blocks.json', blocks)
     writeJson('accounts.json', accounts)
