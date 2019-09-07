@@ -28,6 +28,7 @@ parser.add_argument('-m', '--mode', help='define what mode you would like', choi
 parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='[::1]')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
 parser.add_argument('-z', '--zero_work', type=str, help='Submits empty work', default='False')
+parser.add_argument('-ss', '--save_seed', type=str, help='Save to file during initial seeding', default='False')
 
 options = parser.parse_args()
 
@@ -362,11 +363,6 @@ def seedAccounts():
         # save block as previous
         prev = block_out["hash"]
 
-        """
-        # process current block
-        process(block_out)
-        """
-
         group = []
         group.append(i-1)
         group.append(blockTime)
@@ -379,9 +375,10 @@ def seedAccounts():
         print("Building Send Block {0}".format((i-1)))
         print("\nCreated block {0}".format(hash))
 
-        if i%SAVE_EVERY_N == 0:
-            saveBlocks()
-            saveAccounts()
+        if options.save_seed == 'true':
+            if i%SAVE_EVERY_N == 0:
+                saveBlocks()
+                saveAccounts()
 
     writeJson('blocks.json', blocks)
     writeJson('accounts.json', accounts)

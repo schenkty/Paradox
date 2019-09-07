@@ -43,6 +43,7 @@ An example of proper subset usage is the following:<br />
 9. `-z` - provide zero proof of work, default is `False`
 10. `slam` - Variable TPS throttle, default is `False`
 11. `slam_time` - Define how often slam is decided, default `20` for 20 seconds
+11. `ss` - Save blocks to disk during the seedAccounts process, default is `False`
 
 Slam will not work unless `-tps` argument is specified. Slam is weighted towards the specified tps amount but it is randomly decided.
 
