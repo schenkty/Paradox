@@ -30,6 +30,7 @@ parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
 parser.add_argument('-z', '--zero_work', type=str, help='Submits empty work', default='False')
 parser.add_argument('-ss', '--save_seed', type=str, help='Save to file during initial seeding', default='False')
+parser.add_argument('-dw', '--disable_watch_work', type=str, help='Disable watch_work feature for RPC process (v20 needed)', default='False')
 
 options = parser.parse_args()
 
@@ -229,7 +230,10 @@ def getHistory(account):
 def process(block):
     if 'block' in block:
         block = block['block']
-    return communicateNode({'action': 'process', 'block': block, 'watch_work': 'false'})
+    if options.disable_watch_work == 'true':
+        return communicateNode({'action': 'process', 'block': block, 'watch_work': 'false'})
+    else:
+        return communicateNode({'action': 'process', 'block': block})
 
 def getInfo(account):
     return communicateNode({'action': 'account_info', 'account': account, 'count': 1, 'pending': 'true' })
