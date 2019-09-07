@@ -422,7 +422,7 @@ def buildReceiveBlocks():
             # skip blocks that were already built
             if 'processed' in blockObject["send"]:
                 if blockObject["send"]['processed'] == False:
-                    print("Already built receive")
+                    print("Receive block already built or failed process")
                     continue
 
             prev = blockObject["send"]["hash"]
@@ -435,7 +435,7 @@ def buildReceiveBlocks():
             # skip blocks that were already built
             if 'processed' in blockObject["receive"]:
                 if blockObject["receive"]['processed'] == False:
-                    print("Already built receive")
+                    print("Receive block already built or failed process")
                     continue
 
             previous = prev
@@ -485,7 +485,7 @@ def buildSendBlocks():
             # skip receive blocks that has not been built yet
             if 'processed' in blockObject["receive"]:
                 if blockObject["receive"]['processed'] == True:
-                    print("Receive not built yet")
+                    print("Receive block not built yet")
                     continue
 
             previous = blockObject['receive']["hash"]
@@ -496,7 +496,7 @@ def buildSendBlocks():
         if 'send' in blockObject:
             if 'processed' in blockObject["send"]:
                 if blockObject["send"]['processed'] == False:
-                    print("Already built send")
+                    print("Send block already built or failed process")
                     continue
 
         # build send block
