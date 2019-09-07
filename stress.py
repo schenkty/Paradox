@@ -103,7 +103,8 @@ def nestedDict(n, type):
         return defaultdict(lambda: nestedDict(n-1, type))
 
 # collect failed blocks
-failedBlocks = nestedDict(2, str)
+failedSeedBlocks = nestedDict(2, str)
+failedProcessBlocks = nestedDict(2, str)
 
 class SlamTimer(object):
     def __init__(self, interval, function, *args, **kwargs):
@@ -204,9 +205,14 @@ def saveBlocks():
     print('\n(SAVE) Blocks have been written to blocks.json\n')
 
 # standard function to save failed blocks and print
-def saveFailedBlocks():
-    writeJson('failedBlocks.json', failedBlocks)
-    print('(SAVE) Failed blocks have been written to failedBlocks.json\n')
+def saveFailedProcessBlocks():
+    writeJson('failedProcessBlocks.json', failedProcessBlocks)
+    print('(SAVE) Failed blocks have been written to failedProcessBlocks.json\n')
+
+# standard function to save failed blocks and print
+def saveFailedSeedBlocks():
+    writeJson('failedSeedBlocks.json', failedSeedBlocks)
+    print('(SAVE) Failed blocks have been written to failedSeedBlocks.json\n')
 
 # standard function to save accounts and print
 def saveAccounts():
@@ -320,6 +326,8 @@ def getAccounts():
 def seedAccounts():
     global accounts
     global blocks
+    global failedSeedBlocks
+
     prev = None
     rpcTimings = {}
 
@@ -345,6 +353,8 @@ def seedAccounts():
 
     # seed all accounts with test raw
     i = 0
+    processSeedCount = 0
+
     for destAccount in accountList:
         i = (i + 1)
         if i == 1:
@@ -363,20 +373,34 @@ def seedAccounts():
         block_out = generateBlock(mainKey, firstAccount, adjustedbal, prev, destAccount)
         blockTime = time.perf_counter() - blockTimeStart
 
+        # save block as previous
+        prev = block_out['hash']
+
         processTimeStart = time.perf_counter() # measure the time taken for RPC call
-        hash = process(block_out)["hash"]
+        result = process(block_out)
         processTime = time.perf_counter() - processTimeStart
+
+        failed = False
+        hash = ''
+        if 'hash' in result:
+            if len(result['hash']) == 64:
+                processSeedCount += 1
+                hash = result['hash']
+            else:
+                failedSeedBlocks[x]['send'] = {'hash': block['hash'], 'result': result}
+                print(result)
+                failed = True
 
         blockObject = {'send': {'hash': hash}}
         blocks['accounts'][destAccount] = blockObject
 
-        # save block as previous
-        prev = block_out["hash"]
-
         rpcTimings[str(i-1)] = {'block_create_time':blockTime, 'process_time':processTime}
 
         # set seeded to true for destAccount
-        accounts['accounts'][destAccount]['seeded'] = True
+        if failed:
+            accounts['accounts'][destAccount]['seeded'] = False
+        else:
+            accounts['accounts'][destAccount]['seeded'] = True
 
         print("Building Send Block {0}".format((i-1)))
         print("\nCreated block {0}".format(hash))
@@ -386,9 +410,12 @@ def seedAccounts():
                 saveBlocks()
                 saveAccounts()
 
+    time.sleep(threadDelay)
     writeJson('blocks.json', blocks)
     writeJson('accounts.json', accounts)
     writeJson('seedRPCTimings.json', rpcTimings)
+    saveFailedSeedBlocks()
+    print("Seeded " + str(processSeedCount) + " blocks")
 
 def buildReceiveBlocks():
     global accounts
@@ -525,7 +552,7 @@ def processReceiveBlocks(all = False, blockSection = 0):
     global start
     global start_process
     global processReceiveCount
-    global failedBlocks
+    global failedProcessBlocks
 
     start = time.perf_counter()
     start_process = time.perf_counter()
@@ -580,11 +607,11 @@ def processReceiveBlocks(all = False, blockSection = 0):
                 processReceiveCount += 1
             else:
                 failed = True
-                failedBlocks[x]['receive'] = {'hash': block['hash'], 'result': result}
+                failedProcessBlocks[x]['receive'] = {'hash': block['hash'], 'result': result}
                 print(result)
         else:
             failed = True
-            failedBlocks[x]['receive'] = {'hash': block['hash'], 'result': result}
+            failedProcessBlocks[x]['receive'] = {'hash': block['hash'], 'result': result}
             print(result)
 
         if failed:
@@ -612,7 +639,7 @@ def processSendBlocks(all = False, blockSection = 0):
     global start
     global start_process
     global processSendCount
-    global failedBlocks
+    global failedProcessBlocks
 
     if all == False:
         start = time.perf_counter()
@@ -668,11 +695,11 @@ def processSendBlocks(all = False, blockSection = 0):
                 processSendCount += 1
             else:
                 failed = True
-                failedBlocks[x]['send'] = {'hash': block['hash'], 'result': result}
+                failedProcessBlocks[x]['send'] = {'hash': block['hash'], 'result': result}
                 print(result)
         else:
             failed = True
-            failedBlocks[x]['send'] = {'hash': block['hash'], 'result': result}
+            failedProcessBlocks[x]['send'] = {'hash': block['hash'], 'result': result}
             print(result)
 
         if failed:
@@ -709,7 +736,7 @@ def processSends(allBlocks = False):
     """
     time.sleep(threadDelay) # wait for threads or the printing will come in wrong order
     saveBlocks()
-    saveFailedBlocks()
+    saveFailedProcessBlocks()
 
 def processReceives(allBlocks = False):
     thread1 = Thread(target = processReceiveBlocks, args = (allBlocks, 1))
@@ -730,7 +757,7 @@ def processReceives(allBlocks = False):
     """
     time.sleep(threadDelay) # wait for threads or the printing will come in wrong order
     saveBlocks()
-    saveFailedBlocks()
+    saveFailedProcessBlocks()
 
 def processAll():
     global processReceiveCount
@@ -831,7 +858,7 @@ def recoverAccounts():
         if type == 'receive':
             blocks['accounts'][account]['receive']['processed'] = True
 
-    time.sleep(1)
+    time.sleep(threadDelay)
     print("Processed " + str(processSendCount) + " send blocks")
     print("Accounts Recovered")
     writeJson('blocks.json', blocks)
@@ -852,12 +879,12 @@ elif options.mode == 'buildReceive':
 elif options.mode == 'processSend':
     processSendCount = 0
     processSends()
-    time.sleep(1)
+    time.sleep(threadDelay)
     print("Processed " + str(processSendCount) + " send blocks")
 elif options.mode == 'processReceive':
     processReceiveCount = 0
     processReceives()
-    time.sleep(1)
+    time.sleep(threadDelay)
     print("Processed " + str(processReceiveCount) + " receive blocks")
 elif options.mode == 'processAll':
     processAll()
