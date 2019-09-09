@@ -43,7 +43,7 @@ if (($SET == 1));then
     python3 stress.py -m buildAll -n 100000 -tps $TPS
   fi
   if (($TYPE == 2));then
-    python3 stress.py -m processAll -n 100000 -tps $TPS
+    python3 stress.py -m processAll -n 100000 -tps $TPS -dw
   fi
 fi
 
@@ -53,7 +53,7 @@ if (($SET == 2));then
     python3 stress.py -m buildAll -n 100000 -tps $TPS
   fi
   if (($TYPE == 2));then
-    python3 stress.py -m processAll -n 100000 -tps $TPS
+    python3 stress.py -m processAll -n 100000 -tps $TPS -dw
   fi
 fi
 
@@ -63,7 +63,7 @@ if (($SET == 3));then
     python3 stress.py -m buildAll -n 50000 -tps $TPS
   fi
   if (($TYPE == 2));then
-    python3 stress.py -m processAll -n 50000 -tps $TPS
+    python3 stress.py -m processAll -n 50000 -tps $TPS -dw
   fi
 fi
 
@@ -73,7 +73,7 @@ if (($SET == 4));then
     python3 stress.py -m buildAll -n 25000 -tps $TPS
   fi
   if (($TYPE == 2));then
-    python3 stress.py -m processAll -n 25000 -tps $TPS
+    python3 stress.py -m processAll -n 25000 -tps $TPS -dw
   fi
 fi
 
@@ -83,6 +83,6 @@ if (($SET == 5));then
     python3 stress.py -m buildAll -n 150000 -tps $TPS
   fi
   if (($TYPE == 2));then
-    python3 stress.py -m processAll -n 150000 -tps $TPS
+    python3 stress.py -m processAll -n 150000 -tps $TPS -dw
   fi
 fi
