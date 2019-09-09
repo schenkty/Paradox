@@ -34,16 +34,17 @@ An example of proper subset usage is the following:<br />
 
 1. `-n` - Number of accounts used for testing
 2. `-s` - Size of each transaction in RAW, default is 10 RAW
-3. `-sn` - Save blocks or accounts to disk how often, default is every 10 blocks or accounts
+3. `-sn` - Save blocks or accounts to disk how often, default is every 1000 blocks or accounts
 4. `-r` - Representative to use, default is the brainblocks rep
-5. `-tps` - Throttle transactions per second during processing, default is 0 which is no throttle
+5. `-tps` - Throttle transactions per second during processing, default is 1000
 6. `-m` - define what mode you would like to use
-7. `-nu` - url of the nano node that you would like to use, default is `127.0.0.1`
+7. `-nu` - url of the nano node that you would like to use, default is `[::1]`
 8. `-np` - port of the nano node that you would like to use, default is `55000`
 9. `-z` - provide zero proof of work, default is `False`
 10. `slam` - Variable TPS throttle, default is `False`
 11. `slam_time` - Define how often slam is decided, default `20` for 20 seconds
 11. `ss` - Save blocks to disk during the seedAccounts process, default is `False`
+12. `dw` - Disable watch_work feature for RPC process (v20 needed)
 
 Slam will not work unless `-tps` argument is specified. Slam is weighted towards the specified tps amount but it is randomly decided.
 

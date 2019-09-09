@@ -15,6 +15,9 @@ import time
 import signal
 import os.path
 from collections import defaultdict
+import asyncio
+import async_timeout
+import math
 
 parser = argparse.ArgumentParser(
     description="Stress test for NANO network. Sends 10 raw each to itself ")
@@ -22,7 +25,7 @@ parser.add_argument('-n', '--num-accounts', type=int, help='Number of accounts',
 parser.add_argument('-s', '--size', type=int, help='Size of each transaction in Nano raw', default=10)
 parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=1000)
 parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='nano_1brainb3zz81wmhxndsbrjb94hx3fhr1fyydmg6iresyk76f3k7y7jiazoji')
-parser.add_argument('-tps', '--tps', type=int, help='Throttle transactions per second during processing. 0 (default) will not throttle.', default=0)
+parser.add_argument('-tps', '--tps', type=float, help='Throttle transactions per second during processing. 1000 (default).', default=1000)
 parser.add_argument('-slam', '--slam', type=bool, help='Variable throttle transactions per second during processing. false (default) will not vary.', default=False)
 parser.add_argument('-stime', '--slam_time', type=int, help='Define how often slam is decided', default=20)
 parser.add_argument('-m', '--mode', help='define what mode you would like', choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts', 'recover'])
@@ -49,6 +52,8 @@ buildReceiveCount = 0
 buildSendCount = 0
 processSendCount = 0
 processReceiveCount = 0
+validCount = 0
+slamScale = 1.0
 
 # tps counters
 throttle_tps = options.tps
@@ -59,7 +64,9 @@ start = 0
 start_process = 0
 
 # custom
-threadDelay = 1 # delay after doing multithreading receive or send to wait for processes to finnish
+# timeout for a whole chunk of RPC calls. Should be high because maybe you do 1000 BPS target
+# but RPC is limited to 1 BPS. Then it will take 1000 seconds for that chunk and you don't want it to timeout
+chunkTimeout = 100000
 
 # read json file and decode it
 def readJson(filename):
@@ -83,17 +90,23 @@ def chunkBlocks(seq, num):
     return out
 
 def slamScaler():
-	if not options.slam:
-		throttle_tps = options.tps
-		return
-	if options.tps == 0:
-		throttle_tps = 0
-		return
+    global slamScale
+
+    """
+    if not options.slam:
+        throttle_tps = options.tps
+        return
+    if options.tps == 0:
+        throttle_tps = 0
+        return
 	scales = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
-	slamScale = random.choice(scales)
-	throttle_tps = options.tps + (100 * slamScale)
-	newSlam = ("New Slam: {0}").format(throttle_tps)
-	print(newSlam)
+    """
+    scales = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8]
+    slamScale = random.choice(scales)
+    #throttle_tps = options.tps + (100 * slamScale)
+    #newSlam = ("New Slam: {0}").format(throttle_tps)
+    newSlam = ("New Slam: {0}").format(options.tps*slamScale)
+    print(newSlam)
 
 # allow multidimentional dictionaries. Initialize: newDict = nestedDict(2, float)
 def nestedDict(n, type):
@@ -152,29 +165,15 @@ def findKey(account):
     return accounts['accounts'][account]['key']
 
 def tpsCalc():
-    global highest_tps
-    global current_tps
     global average_tps
-    global start
     global start_process
     # calculate average_tps
-    average_tps = average_tps / (time.perf_counter() - start_process)
+    average_tps = validCount / (time.perf_counter() - start_process)
 
     # print tps results
     printTPS()
 
-def tpsDelay():
-    global highest_tps
-    global current_tps
-    global average_tps
-    global start
-    global start_process
-    # delay next process if --tps is not 0, to throttle outgoing
-    if throttle_tps != 0:
-        while average_tps / (time.perf_counter() - start_process) > throttle_tps:
-            time.sleep(0.001)
-
-def communicateNode(rpc_command):
+async def communicateNode(rpc_command):
     buffer = BytesIO()
     c = pycurl.Curl()
     c.setopt(c.URL, options.node_url)
@@ -187,17 +186,21 @@ def communicateNode(rpc_command):
     ok = False
     while not ok:
         try:
-            c.perform()
-            ok = True
+            if c is not None:
+                c.perform()
+                ok = True
+            else:
+                ok = False
         except pycurl.error as error:
             print('Communication with node failed with error: {}', error)
             time.sleep(2)
             global signaled
             if signaled: sys.exit(2)
 
-    body = buffer.getvalue()
-    parsed_json = json.loads(body.decode('iso-8859-1'))
-    return parsed_json
+    if buffer is not None:
+        body = buffer.getvalue()
+        parsed_json = json.loads(body.decode('iso-8859-1'))
+        return parsed_json
 
 # standard function to save blocks and print
 def saveBlocks():
@@ -220,38 +223,38 @@ def saveAccounts():
     print('\n(SAVE) Accounts have been written to accounts.json\n')
 
 # generate new key pair
-def getKeyPair():
-    return communicateNode({'action': 'key_create'})
+async def getKeyPair():
+    return await communicateNode({'action': 'key_create'})
 
 # republish block to the nano network
-def republish(hash):
-    return communicateNode({'action': 'republish', 'hash': hash})
+async def republish(hash):
+    return await communicateNode({'action': 'republish', 'hash': hash})
 
-def getPending(account):
-    return communicateNode({'action':'pending', 'account': account, 'count': '10'})
+async def getPending(account):
+    return await communicateNode({'action':'pending', 'account': account, 'count': '10'})
 
-def getHistory(account):
-    return communicateNode({'action':'account_history', 'account': account, 'count': '10', 'reverse': True})
+async def getHistory(account):
+    return await communicateNode({'action':'account_history', 'account': account, 'count': '10', 'reverse': True})
 
-def process(block):
+async def process(block):
     if 'block' in block:
         block = block['block']
     if options.disable_watch_work == 'true':
-        return communicateNode({'action': 'process', 'block': block, 'watch_work': 'false'})
+        return await communicateNode({'action': 'process', 'block': block, 'watch_work': 'false'})
     else:
-        return communicateNode({'action': 'process', 'block': block})
+        return await communicateNode({'action': 'process', 'block': block})
 
-def getInfo(account):
-    return communicateNode({'action': 'account_info', 'account': account, 'count': 1, 'pending': 'true' })
+async def getInfo(account):
+    return await communicateNode({'action': 'account_info', 'account': account, 'count': 1, 'pending': 'true' })
 
-def getBlockInfo(hash):
-    return communicateNode({'action': 'block_info', 'hash': hash})
+async def getBlockInfo(hash):
+    return await communicateNode({'action': 'block_info', 'hash': hash})
 
 # validate if an address is the correct format
-def validate_address(address):
+async def validate_address(address):
     # Check if the withdraw address is valid
     validate_command = {'action': 'validate_account_number', 'account': address}
-    address_validation = communicateNode(validate_command)
+    address_validation = await communicateNode(validate_command)
 
     # If the address did not start with xrb_ or nano_ or was deemed invalid by the node, return an error.
     address_prefix_valid = address[:4] == 'xrb_' or address[:5] == 'nano_'
@@ -260,7 +263,7 @@ def validate_address(address):
 
     return True
 
-def generateBlock(key, account, balance, previous, link):
+async def generateBlock(key, account, balance, previous, link):
     create_block = {'action': 'block_create', 'type': 'state', 'account': account,
                     'link': link, 'balance': balance, 'representative': options.representative,
                     'previous': previous, 'key': key}
@@ -270,36 +273,37 @@ def generateBlock(key, account, balance, previous, link):
                         'link': link, 'balance': balance, 'representative': options.representative,
                         'previous': previous, 'key': key, 'work': '1111111111111111'}
     # Create block
-    block_out = communicateNode(create_block)
+    block_out = await communicateNode(create_block)
     return block_out
 
-def receive(key, account, prev):
-    blockInfo = getBlockInfo(prev)
+async def receive(key, account, prev):
+    blockInfo = await getBlockInfo(prev)
     amount = blockInfo['amount']
     newBalance = 0
     previous = prev
 
-    info_out = getInfo(account)
+    info_out = await getInfo(account)
     if 'frontier' in info_out:
         previous = info_out["frontier"]
-        balance = getInfo(account)['balance']
+        balance = info_out['balance']
         newBalance = str(int(balance) + int(amount))
     else:
         newBalance = amount
         previous = '0'
 
-    block = generateBlock(key, account, newBalance, previous, prev)
-    return process(block)
+    block = await generateBlock(key, account, newBalance, previous, prev)
+    return await process(block)
 
-def receiveAllPending(key):
-    keyExpand = communicateNode({'action':'key_expand', 'key':key})
+async def receiveAllPending(key):
+    keyExpand = await communicateNode({'action':'key_expand', 'key':key})
     account = keyExpand['account']
-    blocks = getPending(account)['blocks']
+    accounts = await getPending(account)
+    blocks = accounts['blocks']
 
     for block in blocks:
-        print(receive(key, account, block))
+        print(await receive(key, account, block))
 
-def buildAccounts():
+async def buildAccounts():
     global accounts
     keyNum = options.num_accounts + 1
 
@@ -309,7 +313,7 @@ def buildAccounts():
     i = 0
     for x in range(keyNum):
         i = (i + 1)
-        newKey = getKeyPair()
+        newKey = await getKeyPair()
         accountObject = {'key': newKey['private'], 'seeded': False}
         accounts['accounts'][newKey['account']] = accountObject
 
@@ -323,7 +327,7 @@ def getAccounts():
     currentCount = len((list(accounts['accounts'])))
     print("Accounts {0}".format(currentCount))
 
-def seedAccounts():
+async def seedAccounts():
     global accounts
     global blocks
     global failedSeedBlocks
@@ -341,8 +345,8 @@ def seedAccounts():
     testSize = options.size
 
     # pull info for our account
-    receiveAllPending(mainKey)
-    info_out = getInfo(accountList[0])
+    await receiveAllPending(mainKey)
+    info_out = await getInfo(accountList[0])
 
     # set previous block
     if 'frontier' in info_out:
@@ -370,14 +374,14 @@ def seedAccounts():
 
         # build receive block
         blockTimeStart = time.perf_counter() # measure the time taken for RPC call
-        block_out = generateBlock(mainKey, firstAccount, adjustedbal, prev, destAccount)
+        block_out = await generateBlock(mainKey, firstAccount, adjustedbal, prev, destAccount)
         blockTime = time.perf_counter() - blockTimeStart
 
         # save block as previous
         prev = block_out['hash']
 
         processTimeStart = time.perf_counter() # measure the time taken for RPC call
-        result = process(block_out)
+        result = await process(block_out)
         processTime = time.perf_counter() - processTimeStart
 
         failed = False
@@ -410,14 +414,13 @@ def seedAccounts():
                 saveBlocks()
                 saveAccounts()
 
-    time.sleep(threadDelay)
     writeJson('blocks.json', blocks)
     writeJson('accounts.json', accounts)
     writeJson('seedRPCTimings.json', rpcTimings)
     saveFailedSeedBlocks()
     print("Seeded " + str(processSeedCount) + " blocks")
 
-def buildReceiveBlocks():
+async def buildReceiveBlocks():
     global accounts
     global blocks
     global buildReceiveCount
@@ -468,7 +471,7 @@ def buildReceiveBlocks():
             previous = prev
 
         # build receive block
-        block_out = generateBlock(key, account, newBalance, previous, prev)
+        block_out = await generateBlock(key, account, newBalance, previous, prev)
         hash = block_out['hash']
         block = block_out["block"]
         receiveObject = {"hash":hash, "block":block, "processed":False}
@@ -482,7 +485,7 @@ def buildReceiveBlocks():
             saveBlocks()
     writeJson('blocks.json', blocks)
 
-def buildSendBlocks():
+async def buildSendBlocks():
     global accounts
     global blocks
     global buildSendCount
@@ -527,7 +530,7 @@ def buildSendBlocks():
                     continue
 
         # build send block
-        block_out = generateBlock(key, account, newBalance, previous, account)
+        block_out = await generateBlock(key, account, newBalance, previous, account)
         hash = block_out['hash']
         block = block_out["block"]
         sendObject = {"hash":hash, "block":block, "processed":False}
@@ -541,21 +544,44 @@ def buildSendBlocks():
             saveBlocks()
     writeJson('blocks.json', blocks)
 
-def processReceiveBlocks(all = False, blockSection = 0):
-    global keys
+async def asyncProcess(blockObject, account, type):
+    global validCount
+    global processReceiveCount
+    global processSendCount
+    global failedProcessBlocks
     global blocks
 
-    # using global counters instead of local for processAll function
-    global highest_tps
-    global current_tps
-    global average_tps
-    global start
-    global start_process
-    global processReceiveCount
-    global failedProcessBlocks
+    block = blockObject[type]
+    result = await process(block)
 
-    start = time.perf_counter()
-    start_process = time.perf_counter()
+    failed = False # indicate if a block has failed
+    if 'hash' in result:
+        if len(result['hash']) == 64:
+            validCount += 1
+            print('Valid: ' + result['hash'])
+            if type == 'receive':
+                processReceiveCount += 1
+            elif type == 'send':
+                processSendCount += 1
+        else:
+            failed = True
+    else:
+        failed = True
+
+    if failed:
+        failedProcessBlocks[account][type] = {'hash': block['hash'], 'result': result}
+        blockObject[type]['processed'] = False
+        print(result)
+    else:
+        blockObject[type]['processed'] = True
+    # update processed
+    blocks['accounts'][account] = blockObject
+
+async def processBlocks(type, all = False):
+    # using global counters instead of local for processAll function
+    global validCount
+    global start_process
+    global highest_tps
 
     # receive all blocks
     savedBlocks = list(blocks['accounts'].keys())
@@ -564,236 +590,111 @@ def processReceiveBlocks(all = False, blockSection = 0):
     # we may only want a subset of accounts
     savedBlocks = savedBlocks[0:keyNum]
 
-    if blockSection != 0:
-        if blockSection == 1:
-            savedBlocks = chunkBlocks(savedBlocks, 4)[0]
-        elif blockSection == 2:
-            savedBlocks = chunkBlocks(savedBlocks, 4)[1]
-        elif blockSection == 3:
-            savedBlocks = chunkBlocks(savedBlocks, 4)[2]
-        elif blockSection == 4:
-            savedBlocks = chunkBlocks(savedBlocks, 4)[3]
+    # control the pace with asyncio chunks
+    target = max([int(options.tps), 1])
+    maxSleep = max([1 / options.tps, 1]) # max amount of time to sleep, used when target tps is < 1
+    chunkCount = math.ceil(len(savedBlocks) / target)
 
-    i = 0
-    for x in savedBlocks:
-        i = (i + 1)
+    tasks = []
 
-        # skip blocks that were already processed or if not built
-        if blocks['accounts'][x]['receive']['processed'] == True:
-            print("Already processed receive")
-            continue
-
-        # increase average_tps and current_tps
-        average_tps += 1
-        current_tps += 1
-
-        # calculate current_tps
-        if time.perf_counter() - start > 1:
-            if current_tps > highest_tps:
-                highest_tps = current_tps
-            current_tps = 0
-            start = time.perf_counter()
-
-        # process block
-        blockObject = blocks['accounts'][x]
-        block = blockObject['receive']
-        print("block {0}".format((i-1)))
-        print("Processing block {0}".format(block['hash']))
-        result = process(block)
-
-        failed = False # indicate if a block has failed
-        if 'hash' in result:
-            if len(result['hash']) == 64:
-                processReceiveCount += 1
-            else:
-                failed = True
-                failedProcessBlocks[x]['receive'] = {'hash': block['hash'], 'result': result}
-                print(result)
-        else:
-            failed = True
-            failedProcessBlocks[x]['receive'] = {'hash': block['hash'], 'result': result}
-            print(result)
-
-        if failed:
-            blockObject['receive']['processed'] = False
-        else:
-            blockObject['receive']['processed'] = True
-        # update processed
-        blocks['accounts'][x] = blockObject
-
-        # check if tps needs to throttle
-        tpsDelay()
-
-    if all == False:
-        # calculate tps and print results
-        tpsCalc()
-
-def processSendBlocks(all = False, blockSection = 0):
-    global keys
-    global blocks
-
-    # using global counters instead of local for processAll function
-    global highest_tps
-    global current_tps
-    global average_tps
-    global start
-    global start_process
-    global processSendCount
-    global failedProcessBlocks
-
-    if all == False:
-        start = time.perf_counter()
+    if not all:
         start_process = time.perf_counter()
 
-    # send all blocks
-    savedBlocks = list(blocks['accounts'].keys())
+    # one iteration per chunk, ie. one second
+    for i in range(chunkCount):
+        start = time.perf_counter()
+        currentCount = validCount
+        print("Processing " + type + " chunk " + str(i+1) + " / " + str(chunkCount))
+        bpsChunk = chunkBlocks(savedBlocks, chunkCount)[i]
 
-    keyNum = options.num_accounts + 1
-    # we may only want a subset of accounts
-    savedBlocks = savedBlocks[0:keyNum]
+        # add the batch to run in parallel as ascynio tasks
+        for account in bpsChunk:
+            # skip blocks that were already processed or if not built
+            if blocks['accounts'][account][type]['processed'] == True:
+                print("Already processed " + type)
+                continue
 
-    if blockSection != 0:
-        if blockSection == 1:
-            savedBlocks = chunkBlocks(savedBlocks, 4)[0]
-        elif blockSection == 2:
-            savedBlocks = chunkBlocks(savedBlocks, 4)[1]
-        elif blockSection == 3:
-            savedBlocks = chunkBlocks(savedBlocks, 4)[2]
-        elif blockSection == 4:
-            savedBlocks = chunkBlocks(savedBlocks, 4)[3]
+            blockObject = blocks['accounts'][account]
+            tasks.append(asyncio.ensure_future(asyncProcess(blockObject, account, type)))
 
-    i = 0
-    for x in savedBlocks:
-        i = (i + 1)
+        try:
+            with async_timeout.timeout(chunkTimeout):
+                # process the blocks
+                await asyncio.gather(*tasks)
 
-        # skip blocks that were already processed or if not built
-        if blocks['accounts'][x]['send']['processed'] == True:
-            print("Already processed send")
-            continue
+        except asyncio.TimeoutError as t:
+            pass
+            print('RPC process timed out')
 
-        # increase average_tps and current_tps
-        average_tps += 1
-        current_tps += 1
+        # valid count in latest iteration
+        currentCount = validCount - currentCount
 
-        # calculate current_tps
-        if time.perf_counter() - start > 1:
-            if current_tps > highest_tps:
-                highest_tps = current_tps
-            current_tps = 0
-            start = time.perf_counter()
+        # calculate how long to wait to get a full second (but subtract time if blocks were less than the target)
+        currentTime = time.perf_counter()
+        sleepTime = (maxSleep - (currentTime - start) - ((target - currentCount) * (maxSleep / target))) * slamScale
 
-        # process block
-        blockObject = blocks['accounts'][x]
-        block = blockObject['send']
-        print("block {0}".format((i-1)))
-        print("Processing block {0}".format(block['hash']))
-        result = process(block)
+        # real BPS without time compensation
+        bps = min([currentCount / (currentTime - start), options.tps])
+        highest_tps = max([bps, highest_tps])
+        print("Average Chunk BPS: " + str(bps))
 
-        failed = False # indicate if a block has failed
-        if 'hash' in result:
-            if len(result['hash']) == 64:
-                processSendCount += 1
-            else:
-                failed = True
-                failedProcessBlocks[x]['send'] = {'hash': block['hash'], 'result': result}
-                print(result)
-        else:
-            failed = True
-            failedProcessBlocks[x]['send'] = {'hash': block['hash'], 'result': result}
-            print(result)
+        # if RPC saturation (the asyncio processes has taken more than 1 sec), loop as fast as possible
+        if sleepTime < 0:
+            sleepTime = 0
 
-        if failed:
-            blockObject['send']['processed'] = False
-        else:
-            blockObject['send']['processed'] = True
+        time.sleep(sleepTime)
 
-        # update processed
-        blocks['accounts'][x] = blockObject
-
-        # check if tps needs to throttle
-        tpsDelay()
-
-    if all == False:
+    if not all:
         # calculate tps and print results
         tpsCalc()
 
-def processSends(allBlocks = False):
-    thread1 = Thread(target = processSendBlocks, args = (allBlocks, 1))
-    thread2 = Thread(target = processSendBlocks, args = (allBlocks, 2))
-    thread3 = Thread(target = processSendBlocks, args = (allBlocks, 3))
-    thread4 = Thread(target = processSendBlocks, args = (allBlocks, 4))
-    thread1.start()
-    thread2.start()
-    thread3.start()
-    thread4.start()
-    thread1.join()
-    """
-    # single sequential thread for testing
-    processSendBlocks(allBlocks, 1)
-    processSendBlocks(allBlocks, 2)
-    processSendBlocks(allBlocks, 3)
-    processSendBlocks(allBlocks, 4)
-    """
-    time.sleep(threadDelay) # wait for threads or the printing will come in wrong order
+async def processSends(allBlocks = False):
+    await processBlocks('send', allBlocks)
+
     saveBlocks()
     saveFailedProcessBlocks()
 
-def processReceives(allBlocks = False):
-    thread1 = Thread(target = processReceiveBlocks, args = (allBlocks, 1))
-    thread2 = Thread(target = processReceiveBlocks, args = (allBlocks, 2))
-    thread3 = Thread(target = processReceiveBlocks, args = (allBlocks, 3))
-    thread4 = Thread(target = processReceiveBlocks, args = (allBlocks, 4))
-    thread1.start()
-    thread2.start()
-    thread3.start()
-    thread4.start()
-    thread1.join()
-    """
-    # single sequential thread for testing
-    processReceiveBlocks(allBlocks, 1)
-    processReceiveBlocks(allBlocks, 2)
-    processReceiveBlocks(allBlocks, 3)
-    processReceiveBlocks(allBlocks, 4)
-    """
-    time.sleep(threadDelay) # wait for threads or the printing will come in wrong order
+async def processReceives(allBlocks = False):
+    await processBlocks('receive', allBlocks)
+
     saveBlocks()
     saveFailedProcessBlocks()
 
-def processAll():
+async def processAll():
     global processReceiveCount
     global processSendCount
+    global start_process
 
     processReceiveCount = 0
     processSendCount = 0
 
+    start_process = time.perf_counter()
     # receive all blocks
-    processReceives(True)
+    await processReceives(True)
     # send all blocks
-    processSends(True)
+    await processSends(True)
 
-    totalTime = time.perf_counter() - start_process - (threadDelay * 2)
+    totalTime = time.perf_counter() - start_process
 
     # calculate tps and print results
     tpsCalc()
     print("Processed " + str(processReceiveCount) + " receive blocks and " + str(processSendCount) + " send blocks")
     print("Total time: " + str(totalTime) + " seconds")
 
-def buildAll():
-    # build all receive blocks
-    buildReceiveBlocks()
-    # build all send blocks
-    buildSendBlocks()
+async def buildAll():
+    await buildReceiveBlocks()
+    await buildSendBlocks()
 
     print("Built " + str(buildReceiveCount) + " receive blocks and " + str(buildSendCount) + " send blocks")
 
-def autoOnce():
+async def autoOnce():
     # build all blocks
-    buildAll()
+    await buildAll()
     # process all blocks
-    processAll()
+    await processAll()
 
 # recover single account
-def recover(account):
+async def recover(account):
     global keys
     global blocks
     if not account:
@@ -812,92 +713,109 @@ def recover(account):
     key = findKey(account)
 
     # pull info for our account
-    info_out = getInfo(account)
+    info_out = await getInfo(account)
 
     if not 'frontier' in info_out:
         return
 
     # if we have pending blocks, receive them
     if int(info_out["pending"]) > 0:
-        receiveAllPending(key)
+        print("Receive pending")
+        await receiveAllPending(key)
         # update info for our account
-        info_out = getInfo(account)
+        info_out = await getInfo(account)
 
     # set previous block
     prev = info_out["frontier"]
-    type = getHistory(account)["history"][0]["type"]
+    historyAccount = await getHistory(account)
+    type = historyAccount["history"][0]["type"]
     if type == 'send':
         blocks['accounts'][account]['send']['hash'] = prev
+        blocks['accounts'][account]['send']['processed'] = True # simulate processed or it will not be built in next step
     elif type == 'receive':
         blocks['accounts'][account]['receive']['hash'] = prev
         blocks['accounts'][account]['receive']['processed'] = False
 
 # reset all saved hashes and grab head blocks
-def recoverAccounts():
+async def recoverAccounts():
     global processSendCount
     accounts = list(blocks['accounts'].keys())
 
     for account in accounts:
         # recover account
-        recover(account)
+        await recover(account)
 
-    buildSendBlocks()
+    await buildSendBlocks()
+
     processSendCount = 0
-    processSends()
+    await processSends()
 
     # reset the process state or receive blocks can't be built
     for account in accounts:
         if not account:
             continue
         # pull info for our account
-        info_out = getInfo(account)
+        info_out = await getInfo(account)
         if not 'frontier' in info_out:
             continue
 
-        type = getHistory(account)["history"][0]["type"]
+        historyAccount = await getHistory(account)
+        type = historyAccount["history"][0]["type"]
         if type == 'receive':
             blocks['accounts'][account]['receive']['processed'] = True
 
-    time.sleep(threadDelay)
     print("Processed " + str(processSendCount) + " send blocks")
     print("Accounts Recovered")
     writeJson('blocks.json', blocks)
     writeJson('accounts.json', accounts)
 
-if options.mode == 'buildAccounts':
-    buildAccounts()
-elif options.mode == 'seedAccounts':
-    seedAccounts()
-elif options.mode == 'buildAll':
-    buildAll()
-elif options.mode == 'buildSend':
-    buildSendBlocks()
-    print("Built " + str(buildSendCount) + " send blocks")
-elif options.mode == 'buildReceive':
-    buildReceiveBlocks()
-    print("Built " + str(buildReceiveCount) + " receive blocks")
-elif options.mode == 'processSend':
-    processSendCount = 0
-    processSends()
-    time.sleep(threadDelay)
-    print("Processed " + str(processSendCount) + " send blocks")
-elif options.mode == 'processReceive':
-    processReceiveCount = 0
-    processReceives()
-    time.sleep(threadDelay)
-    print("Processed " + str(processReceiveCount) + " receive blocks")
-elif options.mode == 'processAll':
-    processAll()
-elif options.mode == 'autoOnce':
-    autoOnce()
-elif options.mode == 'countAccounts':
-    getAccounts()
-elif options.mode == 'recover':
-    recoverAccounts()
+async def main():
+    if options.mode == 'buildAccounts':
+        await buildAccounts()
 
-# end slam thread
-slamThread.stop()
+    elif options.mode == 'seedAccounts':
+        await seedAccounts()
 
-# save all blocks and accounts
-writeJson('blocks.json', blocks)
-writeJson('accounts.json', accounts)
+    elif options.mode == 'buildAll':
+        await buildAll()
+
+    elif options.mode == 'buildSend':
+        await buildSendBlocks()
+        print("Built " + str(buildSendCount) + " send blocks")
+
+    elif options.mode == 'buildReceive':
+        await buildReceiveBlocks()
+        print("Built " + str(buildReceiveCount) + " receive blocks")
+
+    elif options.mode == 'processSend':
+        processSendCount = 0
+        await processBlocks('send')
+        print("Processed " + str(processSendCount) + " send blocks")
+
+    elif options.mode == 'processReceive':
+        processReceiveCount = 0
+        await processBlocks('receive')
+        print("Processed " + str(processReceiveCount) + " receive blocks")
+
+    elif options.mode == 'processAll':
+        await processAll()
+
+    elif options.mode == 'autoOnce':
+        await autoOnce()
+
+    elif options.mode == 'countAccounts':
+        await getAccounts()
+
+    elif options.mode == 'recover':
+        await recoverAccounts()
+
+    # end slam thread
+    slamThread.stop()
+
+    # save all blocks and accounts
+    writeJson('blocks.json', blocks)
+    writeJson('accounts.json', accounts)
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
