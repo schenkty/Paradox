@@ -27,12 +27,13 @@ parser.add_argument('-r', '--representative', type=str, help='Representative to 
 parser.add_argument('-tps', '--tps', type=float, help='Throttle transactions per second during processing. 1000 (default).', default=1000)
 parser.add_argument('-slam', '--slam', type=bool, help='Variable throttle transactions per second during processing. false (default) will not vary.', default=False)
 parser.add_argument('-stime', '--slam_time', type=int, help='Define how often slam is decided', default=20)
-parser.add_argument('-m', '--mode', help='define what mode you would like', choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts', 'recover'])
+parser.add_argument('-m', '--mode', help='define what mode you would like', required=True, choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts', 'recover'])
 parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='[::1]')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
 parser.add_argument('-z', '--zero_work', type=str, help='Submits empty work', default='False')
 parser.add_argument('-ss', '--save_seed', type=str, help='Save to file during initial seeding', default='False')
 parser.add_argument('-dw', '--disable_watch_work', type=str, help='Disable watch_work feature for RPC process (v20 needed)', default='False')
+parser.add_argument('-al', '--auto_loops', type=int, help='How many times to run the autoOnce mode. 1 (default)', default=1)
 
 options = parser.parse_args()
 
@@ -588,6 +589,8 @@ async def processBlocks(type, all = False):
     savedBlocks = list(blocks['accounts'].keys())
 
     keyNum = options.num_accounts + 1
+    validCount = 0 # reset
+
     # we may only want a subset of accounts
     savedBlocks = savedBlocks[0:keyNum]
 
@@ -689,10 +692,13 @@ async def buildAll():
     print("Built " + str(buildReceiveCount) + " receive blocks and " + str(buildSendCount) + " send blocks")
 
 async def autoOnce():
-    # build all blocks
-    await buildAll()
-    # process all blocks
-    await processAll()
+    loops = options.auto_loops
+    while loops > 0:
+        # build all blocks
+        await buildAll()
+        # process all blocks
+        await processAll()
+        loops -= 1
 
 # recover single account
 async def recover(account):

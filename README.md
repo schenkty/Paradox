@@ -45,6 +45,7 @@ An example of proper subset usage is the following:<br />
 11. `slam_time` - Define how often slam is decided, default `20` for 20 seconds
 11. `ss` - Save blocks to disk during the seedAccounts process, default is `False`
 12. `dw` - Disable watch_work feature for RPC process (v20 needed)
+13. `al` - How many times to run the autoOnce mode. 1 (default)
 
 Slam will not work unless `-tps` argument is specified. Slam is weighted towards the specified tps amount but it is randomly decided.
 
@@ -58,6 +59,6 @@ Slam will not work unless `-tps` argument is specified. Slam is weighted towards
 6. `processSend` - process all send blocks
 7. `processReceive` - process all receive blocks
 8. `processAll` - process all blocks for both receive and send
-9. `autoOnce` - run through buildAll and processAll once
+9. `autoOnce` - run through buildAll and processAll once (or use argument -al for a custom amount of loops)
 10. `countAccounts` - return number of accounts built
 11. `recover` - receive all pending blocks for every account, build a batch of send blocks and process send blocks
