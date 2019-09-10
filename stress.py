@@ -4,7 +4,6 @@
 # import required packages
 from io import BytesIO
 import json
-import csv
 import pycurl
 from threading import Timer
 from threading import Thread
@@ -101,7 +100,8 @@ def slamScaler():
         return
 	scales = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
     """
-    scales = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8]
+    # 0.5 = double BPS
+    scales = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5]
     slamScale = random.choice(scales)
     #throttle_tps = options.tps + (100 * slamScale)
     #newSlam = ("New Slam: {0}").format(throttle_tps)
@@ -193,7 +193,7 @@ async def communicateNode(rpc_command):
                 ok = False
         except pycurl.error as error:
             print('Communication with node failed with error: {}', error)
-            time.sleep(2)
+            await asyncio.sleep(2)
             global signaled
             if signaled: sys.exit(2)
 
@@ -555,6 +555,7 @@ async def asyncProcess(blockObject, account, type):
     result = await process(block)
 
     failed = False # indicate if a block has failed
+
     if 'hash' in result:
         if len(result['hash']) == 64:
             validCount += 1
@@ -642,7 +643,7 @@ async def processBlocks(type, all = False):
         if sleepTime < 0:
             sleepTime = 0
 
-        time.sleep(sleepTime)
+        await asyncio.sleep(sleepTime)
 
     if not all:
         # calculate tps and print results
