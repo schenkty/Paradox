@@ -811,7 +811,7 @@ async def main():
         await autoOnce()
 
     elif options.mode == 'countAccounts':
-        await getAccounts()
+        getAccounts()
 
     elif options.mode == 'recover':
         await recoverAccounts()
