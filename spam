@@ -1,0 +1,88 @@
+#!/bin/bash
+#read parameters
+SET=0
+TYPE=0
+TPS=0
+
+usage()
+{
+    echo "Usage: spam -set <set> -t <type>"
+    echo "Options:"
+    echo "  -set  int           Spam set number"
+    echo "  -t    int           1=build | 2=publish"
+    echo "  -tps  int           TPS | Default 0"
+}
+
+while [ "$1" != "" ]; do
+    case $1 in
+
+        -set)                   shift
+                                SET=$1
+                                ;;
+        -t)                     shift
+                                TYPE=$1
+                                ;;
+        -tps)                   shift
+                                TPS=$1
+                                ;;
+        * )                     usage
+                                exit 1
+    esac
+    shift
+done
+
+#check if correct parameters sent
+if (($SET == 0)) || (($TYPE == 0));then
+  usage
+  exit 1
+fi
+
+if (($SET == 1));then
+  cd set1_100k
+  if (($TYPE == 1));then
+    python3 stress.py -m buildAll -n 100000 -tps $TPS
+  fi
+  if (($TYPE == 2));then
+    python3 stress.py -m processAll -n 100000 -tps $TPS -dw true
+  fi
+fi
+
+if (($SET == 2));then
+  cd set2_100k
+  if (($TYPE == 1));then
+    python3 stress.py -m buildAll -n 100000 -tps $TPS
+  fi
+  if (($TYPE == 2));then
+    python3 stress.py -m processAll -n 100000 -tps $TPS -dw true
+  fi
+fi
+
+if (($SET == 3));then
+  cd set3_50k
+  if (($TYPE == 1));then
+    python3 stress.py -m buildAll -n 50000 -tps $TPS
+  fi
+  if (($TYPE == 2));then
+    python3 stress.py -m processAll -n 50000 -tps $TPS -dw true
+  fi
+fi
+
+if (($SET == 4));then
+  cd set4_25k
+  if (($TYPE == 1));then
+    python3 stress.py -m buildAll -n 25000 -tps $TPS
+  fi
+  if (($TYPE == 2));then
+    python3 stress.py -m processAll -n 25000 -tps $TPS -dw true
+  fi
+fi
+
+if (($SET == 5));then
+  cd set5_150k
+  if (($TYPE == 1));then
+    python3 stress.py -m buildAll -n 150000 -tps $TPS
+  fi
+  if (($TYPE == 2));then
+    python3 stress.py -m processAll -n 150000 -tps $TPS -dw true
+  fi
+fi
