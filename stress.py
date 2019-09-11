@@ -13,6 +13,7 @@ import sys
 import time
 import signal
 import os.path
+import os
 from collections import defaultdict
 import asyncio
 import async_timeout
@@ -75,6 +76,8 @@ def readJson(filename):
 
 # write json file and encode it
 def writeJson(filename, data):
+    # backup old file to avoid corruption during save
+    os.rename(filename, filename + '.bak')
     with open(filename, 'w') as json_file:
         json.dump(data, json_file)
 
@@ -91,6 +94,9 @@ def chunkBlocks(seq, num):
 
 def slamScaler():
     global slamScale
+
+    if not options.slam:
+        return
 
     """
     if not options.slam:
