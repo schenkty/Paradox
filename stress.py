@@ -77,7 +77,8 @@ def readJson(filename):
 # write json file and encode it
 def writeJson(filename, data):
     # backup old file to avoid corruption during save
-    os.rename(filename, filename + '.bak')
+    if os.path.exists(filename):
+        os.rename(filename, filename + '.bak')
     with open(filename, 'w') as json_file:
         json.dump(data, json_file)
 
