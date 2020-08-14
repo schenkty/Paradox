@@ -49,7 +49,7 @@ An example of proper subset usage is the following:<br />
 12. `dw` - Disable watch_work feature for RPC process (v20 needed)
 13. `al` - How many times to run the autoOnce mode. 1 (default)
 
-Slam will not work unless `-tps` argument is specified. Slam is weighted towards the specified tps amount but it is randomly decided.
+Slam will not work unless `-bps` argument is specified. Slam is weighted towards the specified tps amount but it is randomly decided.
 
 ### launch modes
 
