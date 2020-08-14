@@ -1,4 +1,4 @@
-# Nano Stressor
+# Paradox Nano Stressor
 # Ty Schenk 2019
 
 # import required packages
@@ -21,7 +21,7 @@ import math
 from nanolib import Block, get_account_key_pair
 
 parser = argparse.ArgumentParser(
-    description="Stress test for NANO network. Sends 10 raw each to itself ")
+    description="Paradox stress testing tool for NANO network. Sends 10 raw each to itself ")
 parser.add_argument('-n', '--num-accounts', type=int, help='Number of accounts', required=True)
 parser.add_argument('-s', '--size', type=int, help='Size of each transaction in Nano raw', default=10)
 parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=1000)
