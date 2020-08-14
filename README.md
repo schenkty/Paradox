@@ -35,11 +35,11 @@ An example of proper subset usage is the following:<br />
 1. `-n` - Number of accounts used for testing
 2. `-s` - Size of each transaction in RAW, default is 10 RAW
 3. `-sn` - Save blocks or accounts to disk how often, default is every 1000 blocks or accounts
-4. `-r` - Representative to use, default is the brainblocks rep
-5. `-tps` - Throttle transactions per second during processing, default is 1000
+4. `-r` - Representative to use, default is a testing rep
+5. `-bps` - Throttle blocks per second during processing, default is 1000
 6. `-m` - define what mode you would like to use
 7. `-nu` - url of the nano node that you would like to use, default is `[::1]`
-8. `-np` - port of the nano node that you would like to use, default is `55000`
+8. `-np` - port of the nano node that you would like to use, default is `7076`
 7. `-wu` - url of the nano work server that you would like to use, default is value of `-nu`
 8. `-wp` - port of the nano work server that you would like to use, default is value of `-np`
 9. `-z` - provide zero proof of work, default is `False`
