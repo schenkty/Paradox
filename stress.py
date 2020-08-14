@@ -18,6 +18,7 @@ from collections import defaultdict
 import asyncio
 import async_timeout
 import math
+from nanolib import Block, get_account_key_pair
 
 parser = argparse.ArgumentParser(
     description="Stress test for NANO network. Sends 10 raw each to itself ")
@@ -25,7 +26,7 @@ parser.add_argument('-n', '--num-accounts', type=int, help='Number of accounts',
 parser.add_argument('-s', '--size', type=int, help='Size of each transaction in Nano raw', default=10)
 parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=1000)
 parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='nano_1brainb3zz81wmhxndsbrjb94hx3fhr1fyydmg6iresyk76f3k7y7jiazoji')
-parser.add_argument('-tps', '--tps', type=float, help='Throttle transactions per second during processing. 1000 (default).', default=1000)
+parser.add_argument('-tps', '--tps', type=float, help='Throttle transactions per second during processing. 1000 (default).', default=10000)
 parser.add_argument('-slam', '--slam', type=bool, help='Variable throttle transactions per second during processing. false (default) will not vary.', default=False)
 parser.add_argument('-stime', '--slam_time', type=int, help='Define how often slam is decided', default=20)
 parser.add_argument('-m', '--mode', help='define what mode you would like', required=True, choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts', 'recover', 'repair'])
@@ -35,7 +36,8 @@ parser.add_argument('-z', '--zero_work', type=str, help='Submits empty work', de
 parser.add_argument('-ss', '--save_seed', type=str, help='Save to file during initial seeding', default='False')
 parser.add_argument('-dw', '--disable_watch_work', type=str, help='Disable watch_work feature for RPC process (v20 needed)', default='False')
 parser.add_argument('-al', '--auto_loops', type=int, help='How many times to run the autoOnce mode. 1 (default)', default=1)
-
+parser.add_argument('-wu', '--work_url', type=str, help='Nano work url')
+parser.add_argument('-wp', '--work_port', type=int, help='Nano work port')
 options = parser.parse_args()
 
 SAVE_EVERY_N = options.save_num
@@ -181,11 +183,11 @@ def tpsCalc():
     # print tps results
     printTPS()
 
-async def communicateNode(rpc_command):
+async def communicateNode(rpc_command, url=options.node_url, port=options.node_port):
     buffer = BytesIO()
     c = pycurl.Curl()
-    c.setopt(c.URL, options.node_url)
-    c.setopt(c.PORT, options.node_port)
+    c.setopt(c.URL, url)
+    c.setopt(c.PORT, port)
     c.setopt(c.POSTFIELDS, json.dumps(rpc_command))
     c.setopt(c.WRITEFUNCTION, buffer.write)
     c.setopt(c.TIMEOUT, 500)
@@ -258,6 +260,18 @@ async def getInfo(account):
 async def getBlockInfo(hash):
     return await communicateNode({'action': 'block_info', 'hash': hash})
 
+async def getWork(hash):
+    work_url = options.node_url
+    work_port = options.node_port
+
+    if options.work_url:
+        work_url = options.work_url
+
+    if options.work_port:
+        work_port = options.work_port
+
+    return await communicateNode({'action': 'work_generate', 'hash': hash}, work_url, work_port)
+
 # validate if an address is the correct format
 async def validate_address(address):
     # Check if the withdraw address is valid
@@ -272,17 +286,23 @@ async def validate_address(address):
     return True
 
 async def generateBlock(key, account, balance, previous, link):
-    create_block = {'action': 'block_create', 'type': 'state', 'account': account,
-                    'link': link, 'balance': balance, 'representative': options.representative,
-                    'previous': previous, 'key': key}
+    if previous == None:
+        pair = get_account_key_pair(key)
+        previous = pair.public
 
     if options.zero_work == 'true':
-        create_block = {'action': 'block_create', 'type': 'state', 'account': account,
-                        'link': link, 'balance': balance, 'representative': options.representative,
-                        'previous': previous, 'key': key, 'work': '1111111111111111'}
-    # Create block
-    block_out = await communicateNode(create_block)
-    return block_out
+        block = Block(block_type='state', account=account, representative=options.representative, previous=previous, balance=balance, link=link, work='1111111111111111')
+        block.sign(key)
+        return block.json()
+
+    block = Block(block_type="state", account=account, representative=options.representative, previous=previous, balance=balance, link=link)
+    work = await getWork(previous)
+    if work:
+        block.work = work['work']
+        block.sign(key)
+
+    blockObj = {'hash': block.block_hash, 'block': block.json()}
+    return blockObj
 
 async def receive(key, account, prev):
     blockInfo = await getBlockInfo(prev)
@@ -297,7 +317,7 @@ async def receive(key, account, prev):
         newBalance = str(int(balance) + int(amount))
     else:
         newBalance = amount
-        previous = '0'
+        previous = None
 
     block = await generateBlock(key, account, newBalance, previous, prev)
     return await process(block)
@@ -452,7 +472,7 @@ async def buildReceiveBlocks():
         key = accounts['accounts'][account]['key']
         # pull blockObject
         blockObject = blocks['accounts'][account]
-        previous = '0'
+        previous = None
         prev = ''
         newBalance = options.size
 
@@ -480,6 +500,8 @@ async def buildReceiveBlocks():
 
         # build receive block
         block_out = await generateBlock(key, account, newBalance, previous, prev)
+        if 'hash' not in block_out:
+            continue
         hash = block_out['hash']
         block = block_out["block"]
         receiveObject = {"hash":hash, "block":block, "processed":False}
@@ -515,7 +537,7 @@ async def buildSendBlocks():
 
         # set key
         key = accounts['accounts'][account]['key']
-        previous = '0'
+        previous = None
         blockObject = blocks['accounts'][account]
         newBalance = 0
 
