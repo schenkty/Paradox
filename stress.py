@@ -535,6 +535,8 @@ async def buildSendBlocks():
 
         # set key
         key = accounts['accounts'][account]['key']
+        pair = get_account_key_pair(key)
+        link = pair.public
         previous = None
         blockObject = blocks['accounts'][account]
         newBalance = 0
@@ -558,7 +560,7 @@ async def buildSendBlocks():
                     continue
 
         # build send block
-        block_out = await generateBlock(key, account, newBalance, previous, prev)
+        block_out = await generateBlock(key, account, newBalance, previous, link)
         if 'hash' not in block_out:
             continue
         hash = block_out['hash']
