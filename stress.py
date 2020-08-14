@@ -31,7 +31,7 @@ parser.add_argument('-slam', '--slam', type=bool, help='Variable throttle transa
 parser.add_argument('-stime', '--slam_time', type=int, help='Define how often slam is decided', default=20)
 parser.add_argument('-m', '--mode', help='define what mode you would like', required=True, choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts', 'recover', 'repair'])
 parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='[::1]')
-parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
+parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=7076)
 parser.add_argument('-z', '--zero_work', type=str, help='Submits empty work', default='False')
 parser.add_argument('-ss', '--save_seed', type=str, help='Save to file during initial seeding', default='False')
 parser.add_argument('-dw', '--disable_watch_work', type=str, help='Disable watch_work feature for RPC process (v20 needed)', default='False')
@@ -548,7 +548,7 @@ async def buildSendBlocks():
 
             previous = blockObject['receive']["hash"]
             receiveBal = json.loads(blockObject["receive"]["block"])
-            newBalance = str(int(receiveBal["balance"]) - options.size)
+            newBalance = int(receiveBal["balance"]) - options.size
 
         # skip building if already built
         if 'send' in blockObject:
@@ -558,7 +558,9 @@ async def buildSendBlocks():
                     continue
 
         # build send block
-        block_out = await generateBlock(key, account, newBalance, previous, account)
+        block_out = await generateBlock(key, account, newBalance, previous, prev)
+        if 'hash' not in block_out:
+            continue
         hash = block_out['hash']
         block = block_out["block"]
         sendObject = {"hash":hash, "block":block, "processed":False}
