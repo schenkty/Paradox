@@ -25,8 +25,8 @@ parser = argparse.ArgumentParser(
 parser.add_argument('-n', '--num-accounts', type=int, help='Number of accounts', required=True)
 parser.add_argument('-s', '--size', type=int, help='Size of each transaction in Nano raw', default=10)
 parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=1000)
-parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='nano_1brainb3zz81wmhxndsbrjb94hx3fhr1fyydmg6iresyk76f3k7y7jiazoji')
-parser.add_argument('-tps', '--tps', type=float, help='Throttle transactions per second during processing. 1000 (default).', default=10000)
+parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='nano_1testingxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxqhxncdsm')
+parser.add_argument('-bps', '--bps', type=float, help='Throttle blocks per second during processing. 1000 (default).', default=1000)
 parser.add_argument('-slam', '--slam', type=bool, help='Variable throttle transactions per second during processing. false (default) will not vary.', default=False)
 parser.add_argument('-stime', '--slam_time', type=int, help='Define how often slam is decided', default=20)
 parser.add_argument('-m', '--mode', help='define what mode you would like', required=True, choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts', 'recover', 'repair'])
@@ -58,11 +58,11 @@ processReceiveCount = 0
 validCount = 0
 slamScale = 1.0
 
-# tps counters
-throttle_tps = options.tps
-highest_tps = 0
-current_tps = 0
-average_tps = 0
+# bps counters
+throttle_bps = options.bps
+highest_bps = 0
+current_bps = 0
+average_bps = 0
 start = 0
 start_process = 0
 
@@ -103,19 +103,17 @@ def slamScaler():
 
     """
     if not options.slam:
-        throttle_tps = options.tps
+        throttle_bps = options.bps
         return
-    if options.tps == 0:
-        throttle_tps = 0
+    if options.bps == 0:
+        throttle_bps = 0
         return
-	scales = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+    scales = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
     """
     # 0.5 = double BPS
     scales = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5]
     slamScale = random.choice(scales)
-    #throttle_tps = options.tps + (100 * slamScale)
-    #newSlam = ("New Slam: {0}").format(throttle_tps)
-    newSlam = ("New Slam: {0}").format(options.tps*slamScale)
+    newSlam = ("New Slam: {0}").format(options.bps*slamScale)
     print(newSlam)
 
 # allow multidimentional dictionaries. Initialize: newDict = nestedDict(2, float)
@@ -156,7 +154,7 @@ class SlamTimer(object):
         self._timer.cancel()
         self.is_running = False
 
-# variable tps slam every options.slam_time seconds
+# variable bps slam every options.slam_time seconds
 slamThread = SlamTimer(options.slam_time, slamScaler)
 
 if os.path.exists('accounts.json'):
@@ -165,23 +163,23 @@ if os.path.exists('accounts.json'):
 if os.path.exists('blocks.json'):
     blocks = readJson('blocks.json')
 
-def printTPS():
-    # print tps results
+def printBPS():
+    # print bps results
     results = ("Average transactions per second: {0}\n" +
-           "Most transactions in 1 second: {1}").format(average_tps, highest_tps)
+           "Most transactions in 1 second: {1}").format(average_bps, highest_bps)
     print(results)
 
 def findKey(account):
     return accounts['accounts'][account]['key']
 
-def tpsCalc():
-    global average_tps
+def bpsCalc():
+    global average_bps
     global start_process
-    # calculate average_tps
-    average_tps = validCount / (time.perf_counter() - start_process)
+    # calculate average_bps
+    average_bps = validCount / (time.perf_counter() - start_process)
 
-    # print tps results
-    printTPS()
+    # print bps results
+    printbps()
 
 async def communicateNode(rpc_command, url=options.node_url, port=options.node_port):
     buffer = BytesIO()
@@ -295,7 +293,7 @@ async def generateBlock(key, account, balance, previous, link):
         block.sign(key)
         return block.json()
 
-    block = Block(block_type="state", account=account, representative=options.representative, previous=previous, balance=balance, link=link)
+    block = Block(block_type='state', account=account, representative=options.representative, previous=previous, balance=balance, link=link)
     work = await getWork(previous)
     if work:
         block.work = work['work']
@@ -612,7 +610,7 @@ async def processBlocks(type, all = False):
     # using global counters instead of local for processAll function
     global validCount
     global start_process
-    global highest_tps
+    global highest_bps
 
     # receive all blocks
     savedBlocks = list(blocks['accounts'].keys())
@@ -624,8 +622,8 @@ async def processBlocks(type, all = False):
     savedBlocks = savedBlocks[0:keyNum]
 
     # control the pace with asyncio chunks
-    target = max([int(options.tps), 1])
-    maxSleep = max([1 / options.tps, 1]) # max amount of time to sleep, used when target tps is < 1
+    target = max([int(options.bps), 1])
+    maxSleep = max([1 / options.bps, 1]) # max amount of time to sleep, used when target bps is < 1
     chunkCount = math.ceil(len(savedBlocks) / target)
 
     tasks = []
@@ -667,8 +665,8 @@ async def processBlocks(type, all = False):
         sleepTime = (maxSleep - (currentTime - start) - ((target - currentCount) * (maxSleep / target))) * slamScale
 
         # real BPS without time compensation
-        bps = min([currentCount / (currentTime - start), options.tps])
-        highest_tps = max([bps, highest_tps])
+        bps = min([currentCount / (currentTime - start), options.bps])
+        highest_bps = max([bps, highest_bps])
         print("Average Chunk BPS: " + str(bps))
 
         # if RPC saturation (the asyncio processes has taken more than 1 sec), loop as fast as possible
@@ -678,8 +676,8 @@ async def processBlocks(type, all = False):
         await asyncio.sleep(sleepTime)
 
     if not all:
-        # calculate tps and print results
-        tpsCalc()
+        # calculate bps and print results
+        bpsCalc()
 
 async def processSends(allBlocks = False):
     await processBlocks('send', allBlocks)
@@ -709,8 +707,8 @@ async def processAll():
 
     totalTime = time.perf_counter() - start_process
 
-    # calculate tps and print results
-    tpsCalc()
+    # calculate bps and print results
+    bpsCalc()
     print("Processed " + str(processReceiveCount) + " receive blocks and " + str(processSendCount) + " send blocks")
     print("Total time: " + str(totalTime) + " seconds")
 
