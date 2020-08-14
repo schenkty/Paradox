@@ -40,6 +40,8 @@ An example of proper subset usage is the following:<br />
 6. `-m` - define what mode you would like to use
 7. `-nu` - url of the nano node that you would like to use, default is `[::1]`
 8. `-np` - port of the nano node that you would like to use, default is `55000`
+7. `-wu` - url of the nano work server that you would like to use, default is value of `-nu`
+8. `-wp` - port of the nano work server that you would like to use, default is value of `-np`
 9. `-z` - provide zero proof of work, default is `False`
 10. `slam` - Variable TPS throttle, default is `False`
 11. `slam_time` - Define how often slam is decided, default `20` for 20 seconds
@@ -62,3 +64,4 @@ Slam will not work unless `-tps` argument is specified. Slam is weighted towards
 9. `autoOnce` - run through buildAll and processAll once (or use argument -al for a custom amount of loops)
 10. `countAccounts` - return number of accounts built
 11. `recover` - receive all pending blocks for every account, build a batch of send blocks and process send blocks
+12. `repair` - sort seed history from ledger and save to `accounts.json` file
