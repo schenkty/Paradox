@@ -1,18 +1,18 @@
-# out-of-nano-scope
+# Paradox Testing for NANO 
 
-This is my Nano playground for basically anything that nano needs but doesn't have.
+Paradox is my Nano playground for basically anything that Nano needs but doesn't have.
 
 ## network stressor
 
 1. install pycurl
 2. build launch script
-example: `python3 stress.py -m buildAccounts -n 10 -s 10 -nu 127.0.0.1`
+example: `python3 paradox_stress.py -m buildAccounts -n 10 -s 10 -nu 127.0.0.1`
 in this example, we are connecting to a nano node running on localhost
 and building 10 nano accounts.
 3. fund account provided in terminal by step 2
-4. run `python3 stress.py -m seedAccounts -n 10 -s 10 -nu 127.0.0.1`
-5. run `python3 stress.py -m buildAll -n 10 -s 10 -nu 127.0.0.1`
-6. run `python3 stress.py -m processAll -n 10 -s 10 -nu 127.0.0.1`
+4. run `python3 paradox_stress.py -m seedAccounts -n 10 -s 10 -nu 127.0.0.1`
+5. run `python3 paradox_stress.py -m buildAll -n 10 -s 10 -nu 127.0.0.1`
+6. run `python3 paradox_stress.py -m processAll -n 10 -s 10 -nu 127.0.0.1`
 7. repeat steps 5 and 6
 
 ## disclaimers - please read
@@ -22,9 +22,9 @@ and building 10 nano accounts.
 3. If you make any changes to `-n` make sure your accounts are always in the `receive` ready state.<br />
 
 An example of proper subset usage is the following:<br />
-`python3 stress.py -m autoOnce -n 10 -s 10 -nu 127.0.0.1`<br />
-`python3 stress.py -m autoOnce -n 5 -s 10 -nu 127.0.0.1`<br />
-`python3 stress.py -m autoOnce -n 10 -s 10 -nu 127.0.0.1`<br />
+`python3 paradox_stress.py -m autoOnce -n 10 -s 10 -nu 127.0.0.1`<br />
+`python3 paradox_stress.py -m autoOnce -n 5 -s 10 -nu 127.0.0.1`<br />
+`python3 paradox_stress.py -m autoOnce -n 10 -s 10 -nu 127.0.0.1`<br />
 
 `autoOnce` does a full build cycle and process cycle which allows you to safely adjust the accounts used.
 
