@@ -25,10 +25,8 @@ parser = argparse.ArgumentParser(
 parser.add_argument('-n', '--num-accounts', type=int, help='Number of accounts', required=True)
 parser.add_argument('-s', '--size', type=int, help='Size of each transaction in Nano raw', default=10)
 parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=1000)
-parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='nano_1testingxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxqhxncdsm')
+parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='nano_1paradoxtestingxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxw5qzjpw3')
 parser.add_argument('-bps', '--bps', type=float, help='Throttle blocks per second during processing. 1000 (default).', default=1000)
-parser.add_argument('-slam', '--slam', type=bool, help='Variable throttle transactions per second during processing. false (default) will not vary.', default=False)
-parser.add_argument('-stime', '--slam_time', type=int, help='Define how often slam is decided', default=20)
 parser.add_argument('-m', '--mode', help='define what mode you would like', required=True, choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts', 'recover', 'repair'])
 parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='[::1]')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=7076)
@@ -49,6 +47,7 @@ signaled = False
 # global vars
 accounts = {'accounts':{}}
 blocks = {'accounts':{}}
+ZERO_AMT = '0000000000000000000000000000000000000000000000000000000000000000'
 
 # keep track of number of built and processed blocks
 buildReceiveCount = 0
@@ -56,7 +55,6 @@ buildSendCount = 0
 processSendCount = 0
 processReceiveCount = 0
 validCount = 0
-slamScale = 1.0
 
 # bps counters
 throttle_bps = options.bps
@@ -95,27 +93,6 @@ def chunkBlocks(seq, num):
 
     return out
 
-def slamScaler():
-    global slamScale
-
-    if not options.slam:
-        return
-
-    """
-    if not options.slam:
-        throttle_bps = options.bps
-        return
-    if options.bps == 0:
-        throttle_bps = 0
-        return
-    scales = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
-    """
-    # 0.5 = double BPS
-    scales = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5]
-    slamScale = random.choice(scales)
-    newSlam = ("New Slam: {0}").format(options.bps*slamScale)
-    print(newSlam)
-
 # allow multidimentional dictionaries. Initialize: newDict = nestedDict(2, float)
 def nestedDict(n, type):
     if n == 1:
@@ -126,36 +103,6 @@ def nestedDict(n, type):
 # collect failed blocks
 failedSeedBlocks = nestedDict(2, str)
 failedProcessBlocks = nestedDict(2, str)
-
-class SlamTimer(object):
-    def __init__(self, interval, function, *args, **kwargs):
-        self._timer     = None
-        self.interval   = interval
-        self.function   = function
-        self.args       = args
-        self.kwargs     = kwargs
-        self.is_running = False
-        self.start()
-
-    def _run(self):
-        if not options.slam:
-            self.stop()
-        self.is_running = False
-        self.start()
-        self.function(*self.args, **self.kwargs)
-
-    def start(self):
-        if not self.is_running:
-            self._timer = Timer(self.interval, self._run)
-            self._timer.start()
-            self.is_running = True
-
-    def stop(self):
-        self._timer.cancel()
-        self.is_running = False
-
-# variable bps slam every options.slam_time seconds
-slamThread = SlamTimer(options.slam_time, slamScaler)
 
 if os.path.exists('accounts.json'):
     accounts = readJson('accounts.json')
@@ -179,7 +126,7 @@ def bpsCalc():
     average_bps = validCount / (time.perf_counter() - start_process)
 
     # print bps results
-    printbps()
+    printBPS()
 
 async def communicateNode(rpc_command, url=options.node_url, port=options.node_port):
     buffer = BytesIO()
@@ -284,16 +231,17 @@ async def validate_address(address):
     return True
 
 async def generateBlock(key, account, balance, previous, link):
-    if previous == None:
-        pair = get_account_key_pair(key)
-        previous = pair.public
+    block = Block(block_type='state', account=account, representative=options.representative, previous=previous, balance=balance, link=link)
 
     if options.zero_work == 'true':
-        block = Block(block_type='state', account=account, representative=options.representative, previous=previous, balance=balance, link=link, work='1111111111111111')
+        block.work = '1111111111111111'
         block.sign(key)
         return block.json()
 
-    block = Block(block_type='state', account=account, representative=options.representative, previous=previous, balance=balance, link=link)
+    if previous == ZERO_AMT:
+        pair = get_account_key_pair(key)
+        previous = pair.public
+
     work = await getWork(previous)
     if work:
         block.work = work['work']
@@ -304,7 +252,7 @@ async def generateBlock(key, account, balance, previous, link):
 
 async def receive(key, account, prev):
     blockInfo = await getBlockInfo(prev)
-    amount = blockInfo['amount']
+    amount = int(blockInfo['amount'])
     newBalance = 0
     previous = prev
 
@@ -312,10 +260,10 @@ async def receive(key, account, prev):
     if 'frontier' in info_out:
         previous = info_out["frontier"]
         balance = info_out['balance']
-        newBalance = str(int(balance) + int(amount))
+        newBalance = int(balance) + int(amount)
     else:
         newBalance = amount
-        previous = None
+        previous = ZERO_AMT
 
     block = await generateBlock(key, account, newBalance, previous, prev)
     return await process(block)
@@ -358,7 +306,7 @@ async def seedAccounts():
     global blocks
     global failedSeedBlocks
 
-    prev = None
+    prev = ZERO_AMT
     rpcTimings = {}
 
     # pull first account/key pair object from keys array
@@ -366,9 +314,6 @@ async def seedAccounts():
     firstAccount = accountList[0]
     firstObject = accounts['accounts'][firstAccount]
     mainKey = firstObject['key']
-
-    # amount of raw in each txn
-    testSize = options.size
 
     # pull info for our account
     await receiveAllPending(mainKey)
@@ -474,8 +419,8 @@ async def buildReceiveBlocks():
         key = accounts['accounts'][account]['key']
         # pull blockObject
         blockObject = blocks['accounts'][account]
-        previous = None
-        prev = ''
+        previous = ZERO_AMT
+        prev = ZERO_AMT
         newBalance = options.size
 
         if 'send' in blockObject:
@@ -541,7 +486,7 @@ async def buildSendBlocks():
         key = accounts['accounts'][account]['key']
         pair = get_account_key_pair(key)
         link = pair.public
-        previous = None
+        previous = ZERO_AMT
         blockObject = blocks['accounts'][account]
         newBalance = 0
 
@@ -670,7 +615,7 @@ async def processBlocks(type, all = False):
 
         # calculate how long to wait to get a full second (but subtract time if blocks were less than the target)
         currentTime = time.perf_counter()
-        sleepTime = (maxSleep - (currentTime - start) - ((target - currentCount) * (maxSleep / target))) * slamScale
+        sleepTime = (maxSleep - (currentTime - start) - ((target - currentCount) * (maxSleep / target)))
 
         # real BPS without time compensation
         bps = min([currentCount / (currentTime - start), options.bps])
@@ -890,9 +835,6 @@ async def main():
 
     elif options.mode == 'recover':
         await recoverAccounts()
-
-    # end slam thread
-    slamThread.stop()
 
     # save all blocks and accounts
     writeJson('blocks.json', blocks)
