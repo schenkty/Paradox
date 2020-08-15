@@ -186,12 +186,12 @@ async def process(block):
     if 'block' in block:
         block = block['block']
     if options.disable_watch_work == 'true':
-        return await communicateNode({'action': 'process', 'block': block, 'watch_work': 'false'})
+        return await communicateNode({'action': 'process', 'block': block, 'watch_work': False})
     else:
         return await communicateNode({'action': 'process', 'block': block})
 
 async def getInfo(account):
-    return await communicateNode({'action': 'account_info', 'account': account, 'count': 1, 'pending': 'true' })
+    return await communicateNode({'action': 'account_info', 'account': account, 'count': 1, 'pending': True})
 
 async def getBlockInfo(hash):
     return await communicateNode({'action': 'block_info', 'hash': hash})
@@ -206,7 +206,7 @@ async def getWork(hash):
     if options.work_port:
         work_port = options.work_port
 
-    return await communicateNode({'action': 'work_generate', 'hash': hash}, work_url, work_port)
+    return await communicateNode({'action': 'work_generate', 'hash': hash, 'use_peer': True}, work_url, work_port)
 
 async def generateBlock(key, account, balance, previous, link):
     block = Block(block_type='state', account=account, representative=options.representative, previous=previous, balance=balance, link=link)
