@@ -397,10 +397,13 @@ async def seedAccounts():
 
         # calculate the state block balance
         adjustedbal = int(info_out['balance']) - options.size * (i - 1)
+        destKey = accounts['accounts'][destAccount]['key']
+        destPair = get_account_key_pair(destKey)
+        destLink = destPair.public
 
         # build send block
         blockTimeStart = time.perf_counter() # measure the time taken for RPC call
-        block_out = await generateBlock(mainKey, firstAccount, adjustedbal, prev, destAccount)
+        block_out = await generateBlock(mainKey, firstAccount, adjustedbal, prev, destLink)
         blockTime = time.perf_counter() - blockTimeStart
 
         # save block as previous
