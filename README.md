@@ -14,21 +14,6 @@ and building 10 nano accounts.
 5. run `python3 paradox_stress.py -m autoOnce -n 10 -s 10 -nu 127.0.0.1`
 7. repeat steps 5
 
-## disclaimers - please read
-
-1. Do not edit or delete the `accounts.json` or `blocks.json` files
-2. Do Not change the raw size `-s` used for testing. Once you set up accounts, you can only use that size. If you want to change the size, start from scratch with a new size command.
-3. If you make any changes to `-n` make sure your accounts are always in the `receive` ready state.<br />
-
-An example of proper subset usage is the following:<br />
-`python3 paradox_stress.py -m autoOnce -n 10 -s 10 -nu 127.0.0.1`<br />
-`python3 paradox_stress.py -m autoOnce -n 5 -s 10 -nu 127.0.0.1`<br />
-`python3 paradox_stress.py -m autoOnce -n 10 -s 10 -nu 127.0.0.1`<br />
-
-`autoOnce` does a full build cycle and process cycle which allows you to safely adjust the accounts used.
-
-4. You can only increase the number of accounts (`-n`) during a send cycle (pending receive) for current accounts. If you add new accounts outside of this send cycle (after a receive and before a send), you will corrupt the accounts and their block orders. To recover this, call the mode - recover. The recover procedure must be done after "process".
-
 ### launch arguments
 
 1. `-n` - Number of accounts used for testing
@@ -64,3 +49,18 @@ Slam will not work unless `-bps` argument is specified. Slam is weighted towards
 10. `countAccounts` - return number of accounts built
 11. `recover` - receive all pending blocks for every account, build a batch of send blocks and process send blocks
 12. `repair` - sort seed history from ledger and save to `accounts.json` file
+
+## disclaimers - please read
+
+1. Do not edit or delete the `accounts.json` or `blocks.json` files
+2. Do Not change the raw size `-s` used for testing. Once you set up accounts, you can only use that size. If you want to change the size, start from scratch with a new size command.
+3. If you make any changes to `-n` make sure your accounts are always in the `receive` ready state.<br />
+
+An example of proper subset usage is the following:<br />
+`python3 paradox_stress.py -m autoOnce -n 10 -s 10 -nu 127.0.0.1`<br />
+`python3 paradox_stress.py -m autoOnce -n 5 -s 10 -nu 127.0.0.1`<br />
+`python3 paradox_stress.py -m autoOnce -n 10 -s 10 -nu 127.0.0.1`<br />
+
+`autoOnce` does a full build cycle and process cycle which allows you to safely adjust the accounts used.
+
+4. You can only increase the number of accounts (`-n`) during a send cycle (pending receive) for current accounts. If you add new accounts outside of this send cycle (after a receive and before a send), you will corrupt the accounts and their block orders. To recover this, call the mode - recover. The recover procedure must be done after "process".
