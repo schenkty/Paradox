@@ -206,7 +206,7 @@ async def getWork(hash):
     if options.work_port:
         work_port = options.work_port
 
-    return await communicateNode({'action': 'work_generate', 'hash': hash, 'use_peer': True}, work_url, work_port)
+    return await communicateNode({'action': 'work_generate', 'hash': hash, 'use_peers': True}, work_url, work_port)
 
 async def generateBlock(key, account, balance, previous, link):
     block = Block(block_type='state', account=account, representative=options.representative, previous=previous, balance=balance, link=link)
