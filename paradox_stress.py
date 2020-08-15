@@ -396,7 +396,7 @@ async def seedAccounts():
             continue
 
         # calculate the state block balance
-        adjustedbal = str(int(info_out['balance']) - options.size * (i - 1))
+        adjustedbal = int(info_out['balance']) - options.size * (i - 1)
 
         # build send block
         blockTimeStart = time.perf_counter() # measure the time taken for RPC call
@@ -485,7 +485,7 @@ async def buildReceiveBlocks():
 
             if 'block' in blockObject["send"]:
                 sendBal = json.loads(blockObject["send"]["block"])
-                newBalance = str(int(sendBal["balance"]) + options.size)
+                newBalance = int(sendBal["balance"]) + options.size
 
         if 'receive' in blockObject:
             # skip blocks that were already built
