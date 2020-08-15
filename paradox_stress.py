@@ -397,7 +397,8 @@ async def seedAccounts():
 
         # calculate the state block balance
         adjustedbal = int(info_out['balance']) - options.size * (i - 1)
-        destKey = accounts['accounts'][destAccount]['key']
+        destObj = accounts['accounts'][destAccount]
+        destKey = destObj['key']
         destPair = get_account_key_pair(destKey)
         destLink = destPair.public
 
