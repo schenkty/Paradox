@@ -5,9 +5,6 @@
 from io import BytesIO
 import json
 import pycurl
-from threading import Timer
-from threading import Thread
-import random
 import argparse
 import sys
 import time
@@ -57,9 +54,7 @@ processReceiveCount = 0
 validCount = 0
 
 # bps counters
-throttle_bps = options.bps
 highest_bps = 0
-current_bps = 0
 average_bps = 0
 start = 0
 start_process = 0
@@ -181,10 +176,6 @@ def saveAccounts():
 async def getKeyPair():
     return await communicateNode({'action': 'key_create'})
 
-# republish block to the nano network
-async def republish(hash):
-    return await communicateNode({'action': 'republish', 'hash': hash})
-
 async def getPending(account):
     return await communicateNode({'action':'pending', 'account': account, 'count': '10'})
 
@@ -216,19 +207,6 @@ async def getWork(hash):
         work_port = options.work_port
 
     return await communicateNode({'action': 'work_generate', 'hash': hash}, work_url, work_port)
-
-# validate if an address is the correct format
-async def validate_address(address):
-    # Check if the withdraw address is valid
-    validate_command = {'action': 'validate_account_number', 'account': address}
-    address_validation = await communicateNode(validate_command)
-
-    # If the address did not start with xrb_ or nano_ or was deemed invalid by the node, return an error.
-    address_prefix_valid = address[:4] == 'xrb_' or address[:5] == 'nano_'
-    if not address_prefix_valid or address_validation['valid'] != '1':
-        return False
-
-    return True
 
 async def generateBlock(key, account, balance, previous, link):
     block = Block(block_type='state', account=account, representative=options.representative, previous=previous, balance=balance, link=link)
