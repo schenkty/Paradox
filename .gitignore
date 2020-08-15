@@ -1,13 +1,3 @@
-data-accounts.json
-data.json
-blockcounts.json
-blocks.json
-accounts.json
-blockData.json
-data-info.json
-data-info.export.json
-failedProcessBlocks.json
-failedSeedBlocks.json
-seedRPCTimings.json
+*.json
+*.bak
 .DS_Store
-overview.txt
