@@ -1,7 +1,4 @@
 # Paradox Nano Stressor
-# Ty Schenk 2019
-
-# import required packages
 from io import BytesIO
 import json
 import pycurl
@@ -18,18 +15,18 @@ import math
 from nanolib import Block, get_account_key_pair
 
 parser = argparse.ArgumentParser(
-    description="Paradox stress testing tool for NANO network. Sends 10 raw each to itself ")
+    description='Paradox stress testing tool for NANO network. Sends 10 raw each to itself')
 parser.add_argument('-n', '--num-accounts', type=int, help='Number of accounts', required=True)
 parser.add_argument('-s', '--size', type=int, help='Size of each transaction in Nano raw', default=10)
-parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=1000)
+parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how often', default=10000)
 parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='nano_1paradoxtestingxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxw5qzjpw3')
 parser.add_argument('-bps', '--bps', type=float, help='Throttle blocks per second during processing. 1000 (default).', default=1000)
-parser.add_argument('-m', '--mode', help='define what mode you would like', required=True, choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts', 'recover', 'repair'])
+parser.add_argument('-m', '--mode', help='define what mode you would like', required=True, choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts', 'recover', 'repair', 'benchmark'])
 parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='[::1]')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=7076)
 parser.add_argument('-z', '--zero_work', type=str, help='Submits empty work', default='False')
 parser.add_argument('-ss', '--save_seed', type=str, help='Save to file during initial seeding', default='False')
-parser.add_argument('-dw', '--disable_watch_work', type=str, help='Disable watch_work feature for RPC process (v20 needed)', default='False')
+parser.add_argument('-dw', '--disable_watch_work', type=str, help='Disable watch_work feature for RPC process', default='False')
 parser.add_argument('-al', '--auto_loops', type=int, help='How many times to run the autoOnce mode. 1 (default)', default=1)
 parser.add_argument('-wu', '--work_url', type=str, help='Nano work url')
 parser.add_argument('-wp', '--work_port', type=int, help='Nano work port')
@@ -107,8 +104,8 @@ if os.path.exists('blocks.json'):
 
 def printBPS():
     # print bps results
-    results = ("Average transactions per second: {0}\n" +
-           "Most transactions in 1 second: {1}").format(average_bps, highest_bps)
+    results = ('Average transactions per second: {0}\n' +
+           'Most transactions in 1 second: {1}').format(average_bps, highest_bps)
     print(results)
 
 def findKey(account):
@@ -236,7 +233,7 @@ async def receive(key, account, prev):
 
     info_out = await getInfo(account)
     if 'frontier' in info_out:
-        previous = info_out["frontier"]
+        previous = info_out['frontier']
         balance = info_out['balance']
         newBalance = int(balance) + int(amount)
     else:
@@ -270,14 +267,14 @@ async def buildAccounts():
         accounts['accounts'][newKey['account']] = accountObject
 
     writeJson('accounts.json', accounts)
-    print("Fund Account {0}".format(list(accounts['accounts'])[0]))
+    print('Fund Account {0}'.format(list(accounts['accounts'])[0]))
 
 def getAccounts():
     global accounts
     keyNum = options.num_accounts + 1
 
     currentCount = len((list(accounts['accounts'])))
-    print("Accounts {0}".format(currentCount))
+    print('Accounts {0}'.format(currentCount))
 
 async def seedAccounts():
     global accounts
@@ -299,9 +296,9 @@ async def seedAccounts():
 
     # set previous block
     if 'frontier' in info_out:
-        prev = info_out["frontier"]
+        prev = info_out['frontier']
     else:
-        print("Account Not Found. Please Check that account funds are pending")
+        print('Account Not Found. Please Check that account funds are pending')
         return
 
     # seed all accounts with test raw
@@ -315,7 +312,7 @@ async def seedAccounts():
 
         seeded = accounts['accounts'][destAccount]['seeded']
         if seeded == True:
-            print("Account has already been seeded. Skipping...")
+            print('Account has already been seeded. Skipping...')
             continue
 
         # calculate the state block balance
@@ -359,8 +356,8 @@ async def seedAccounts():
         else:
             accounts['accounts'][destAccount]['seeded'] = True
 
-        print("Building Send Block {0}".format((i-1)))
-        print("\nCreated block {0}".format(hash))
+        print('Building Send Block {0}'.format((i-1)))
+        print('\nCreated block {0}'.format(hash))
 
         if options.save_seed == 'true':
             if i%SAVE_EVERY_N == 0:
@@ -371,7 +368,7 @@ async def seedAccounts():
     writeJson('accounts.json', accounts)
     writeJson('seedRPCTimings.json', rpcTimings)
     saveFailedSeedBlocks()
-    print("Seeded " + str(processSeedCount) + " blocks")
+    print('Seeded ' + str(processSeedCount) + ' blocks')
 
 async def buildReceiveBlocks():
     global accounts
@@ -403,22 +400,22 @@ async def buildReceiveBlocks():
 
         if 'send' in blockObject:
             # skip blocks that were already built
-            if 'processed' in blockObject["send"]:
-                if blockObject["send"]['processed'] == False:
-                    print("Receive block already built or failed process")
+            if 'processed' in blockObject['send']:
+                if blockObject['send']['processed'] == False:
+                    print('Receive block already built or failed process')
                     continue
 
-            prev = blockObject["send"]["hash"]
+            prev = blockObject['send']['hash']
 
-            if 'block' in blockObject["send"]:
-                sendBal = json.loads(blockObject["send"]["block"])
-                newBalance = int(sendBal["balance"]) + options.size
+            if 'block' in blockObject['send']:
+                sendBal = json.loads(blockObject['send']['block'])
+                newBalance = int(sendBal['balance']) + options.size
 
         if 'receive' in blockObject:
             # skip blocks that were already built
-            if 'processed' in blockObject["receive"]:
-                if blockObject["receive"]['processed'] == False:
-                    print("Receive block already built or failed process")
+            if 'processed' in blockObject['receive']:
+                if blockObject['receive']['processed'] == False:
+                    print('Receive block already built or failed process')
                     continue
 
             previous = prev
@@ -428,12 +425,12 @@ async def buildReceiveBlocks():
         if 'hash' not in block_out:
             continue
         hash = block_out['hash']
-        block = block_out["block"]
-        receiveObject = {"hash":hash, "block":block, "processed":False}
+        block = block_out['block']
+        receiveObject = {'hash':hash, 'block':block, 'processed':False}
         blockObject['receive'] = receiveObject
         blocks['accounts'][account] = blockObject
-        print("Building Receive Block {0}".format((i-1)))
-        print("\nCreated block {0}".format(block_out['hash']))
+        print('Building Receive Block {0}'.format((i-1)))
+        print('\nCreated block {0}'.format(block_out['hash']))
         buildReceiveCount += 1
 
         if i%SAVE_EVERY_N == 0:
@@ -470,20 +467,20 @@ async def buildSendBlocks():
 
         if 'receive' in blockObject:
             # skip receive blocks that has not been built yet
-            if 'processed' in blockObject["receive"]:
-                if blockObject["receive"]['processed'] == True:
-                    print("Receive block not built yet")
+            if 'processed' in blockObject['receive']:
+                if blockObject['receive']['processed'] == True:
+                    print('Receive block not built yet')
                     continue
 
-            previous = blockObject['receive']["hash"]
-            receiveBal = json.loads(blockObject["receive"]["block"])
-            newBalance = int(receiveBal["balance"]) - options.size
+            previous = blockObject['receive']['hash']
+            receiveBal = json.loads(blockObject['receive']['block'])
+            newBalance = int(receiveBal['balance']) - options.size
 
         # skip building if already built
         if 'send' in blockObject:
-            if 'processed' in blockObject["send"]:
-                if blockObject["send"]['processed'] == False:
-                    print("Send block already built or failed process")
+            if 'processed' in blockObject['send']:
+                if blockObject['send']['processed'] == False:
+                    print('Send block already built or failed process')
                     continue
 
         # build send block
@@ -491,12 +488,12 @@ async def buildSendBlocks():
         if 'hash' not in block_out:
             continue
         hash = block_out['hash']
-        block = block_out["block"]
-        sendObject = {"hash":hash, "block":block, "processed":False}
+        block = block_out['block']
+        sendObject = {'hash':hash, 'block':block, 'processed':False}
         blockObject['send'] = sendObject
         blocks['accounts'][account] = blockObject
-        print("Building Send Block {0}".format((i-1)))
-        print("\nCreated block {0}".format(block_out['hash']))
+        print('Building Send Block {0}'.format((i-1)))
+        print('\nCreated block {0}'.format(block_out['hash']))
         buildSendCount += 1
 
         if i%SAVE_EVERY_N == 0:
@@ -566,14 +563,14 @@ async def processBlocks(type, all = False):
     for i in range(chunkCount):
         start = time.perf_counter()
         currentCount = validCount
-        print("Processing " + type + " chunk " + str(i+1) + " / " + str(chunkCount))
+        print('Processing ' + type + ' chunk ' + str(i+1) + ' / ' + str(chunkCount))
         bpsChunk = chunkBlocks(savedBlocks, chunkCount)[i]
 
         # add the batch to run in parallel as ascynio tasks
         for account in bpsChunk:
             # skip blocks that were already processed or if not built
             if blocks['accounts'][account][type]['processed'] == True:
-                print("Already processed " + type)
+                print('Already processed ' + type)
                 continue
 
             blockObject = blocks['accounts'][account]
@@ -598,7 +595,7 @@ async def processBlocks(type, all = False):
         # real BPS without time compensation
         bps = min([currentCount / (currentTime - start), options.bps])
         highest_bps = max([bps, highest_bps])
-        print("Average Chunk BPS: " + str(bps))
+        print('Average Chunk BPS: ' + str(bps))
 
         # if RPC saturation (the asyncio processes has taken more than 1 sec), loop as fast as possible
         if sleepTime < 0:
@@ -640,14 +637,14 @@ async def processAll():
 
     # calculate bps and print results
     bpsCalc()
-    print("Processed " + str(processReceiveCount) + " receive blocks and " + str(processSendCount) + " send blocks")
-    print("Total time: " + str(totalTime) + " seconds")
+    print('Processed ' + str(processReceiveCount) + ' receive blocks and ' + str(processSendCount) + ' send blocks')
+    print('Total time: ' + str(totalTime) + ' seconds')
 
 async def buildAll():
     await buildReceiveBlocks()
     await buildSendBlocks()
 
-    print("Built " + str(buildReceiveCount) + " receive blocks and " + str(buildSendCount) + " send blocks")
+    print('Built ' + str(buildReceiveCount) + ' receive blocks and ' + str(buildSendCount) + ' send blocks')
 
 async def autoOnce():
     loops = options.auto_loops
@@ -684,16 +681,16 @@ async def recover(account):
         return
 
     # if we have pending blocks, receive them
-    if int(info_out["pending"]) > 0:
-        print("Receive pending")
+    if int(info_out['pending']) > 0:
+        print('Receive pending')
         await receiveAllPending(key)
         # update info for our account
         info_out = await getInfo(account)
 
     # set previous block
-    prev = info_out["frontier"]
+    prev = info_out['frontier']
     historyAccount = await getHistory(account)
-    type = historyAccount["history"][0]["type"]
+    type = historyAccount['history'][0]['type']
     if type == 'send':
         blocks['accounts'][account]['send']['hash'] = prev
         blocks['accounts'][account]['send']['processed'] = True # simulate processed or it will not be built in next step
@@ -725,12 +722,12 @@ async def recoverAccounts():
             continue
 
         historyAccount = await getHistory(account)
-        type = historyAccount["history"][0]["type"]
+        type = historyAccount['history'][0]['type']
         if type == 'receive':
             blocks['accounts'][account]['receive']['processed'] = True
 
-    print("Processed " + str(processSendCount) + " send blocks")
-    print("Accounts Recovered")
+    print('Processed ' + str(processSendCount) + ' send blocks')
+    print('Accounts Recovered')
     writeJson('blocks.json', blocks)
     writeJson('accounts.json', accounts)
 
@@ -743,13 +740,13 @@ async def repairSeedAccounts():
     accountList = list(accounts['accounts'])
     accountListCount = len(accountList)
     firstAccount = accountList[0]
-    print("pulling history")
+    print('pulling history')
     history = await getHistory(firstAccount, str(accountListCount))
-    history = history["history"]
-    print("history found")
+    history = history['history']
+    print('history found')
     seedsFound = 0
 
-    print("sorting history")
+    print('sorting history')
     for destBlock in history:
         if not destBlock:
             continue
@@ -764,12 +761,19 @@ async def repairSeedAccounts():
                 blocks['accounts'][destAccount] = blockObject
                 accounts['accounts'][destAccount]['seeded'] = True
                 seedsFound += 1
-                print("\nFound seed {0}".format(destAccount))
+                print('\nFound seed {0}'.format(destAccount))
 
-    print("\nSeeds Found {0}".format(seedsFound))
-    print("Accounts Repaired")
+    print('\nSeeds Found {0}'.format(seedsFound))
+    print('Accounts Repaired')
     writeJson('blocks.json', blocks)
     writeJson('accounts.json', accounts)
+
+async def benchmark():
+    await buildAccounts()
+    await seedAccounts()
+    await autoOnce()
+
+    print('Benchmark Complete')
 
 async def main():
     if options.mode == 'buildAccounts':
@@ -783,21 +787,21 @@ async def main():
 
     elif options.mode == 'buildSend':
         await buildSendBlocks()
-        print("Built " + str(buildSendCount) + " send blocks")
+        print('Built ' + str(buildSendCount) + ' send blocks')
 
     elif options.mode == 'buildReceive':
         await buildReceiveBlocks()
-        print("Built " + str(buildReceiveCount) + " receive blocks")
+        print('Built ' + str(buildReceiveCount) + ' receive blocks')
 
     elif options.mode == 'processSend':
         processSendCount = 0
         await processBlocks('send')
-        print("Processed " + str(processSendCount) + " send blocks")
+        print('Processed ' + str(processSendCount) + ' send blocks')
 
     elif options.mode == 'processReceive':
         processReceiveCount = 0
         await processBlocks('receive')
-        print("Processed " + str(processReceiveCount) + " receive blocks")
+        print('Processed ' + str(processReceiveCount) + ' receive blocks')
 
     elif options.mode == 'processAll':
         await processAll()
@@ -813,6 +817,9 @@ async def main():
 
     elif options.mode == 'recover':
         await recoverAccounts()
+
+    elif options.mode == 'benchmark':
+        await benchmark()
 
     # save all blocks and accounts
     writeJson('blocks.json', blocks)
