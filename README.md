@@ -6,3 +6,4 @@ All of my tools are separated into folders for organization.
 
 ## [network stressor](https://github.com/schenkty/Paradox/blob/master/network-stressor)
 ## [rpc protector](https://github.com/schenkty/Paradox/blob/master/rpc-protector)
+## [node setup](https://github.com/schenkty/Paradox/blob/master/node-setup)
