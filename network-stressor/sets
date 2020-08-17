@@ -40,49 +40,49 @@ fi
 if (($SET == 1));then
   cd set1_100k
   if (($TYPE == 1));then
-    python3 paradox_stress.py -m buildAll -n 100000 -bps $BPS
+    python3 stress.py -m buildAll -n 100000 -bps $BPS
   fi
   if (($TYPE == 2));then
-    python3 paradox_stress.py -m processAll -n 100000 -bps $BPS -dw true
+    python3 stress.py -m processAll -n 100000 -bps $BPS -dw true
   fi
 fi
 
 if (($SET == 2));then
   cd set2_100k
   if (($TYPE == 1));then
-    python3 paradox_stress.py -m buildAll -n 100000 -bps $BPS
+    python3 stress.py -m buildAll -n 100000 -bps $BPS
   fi
   if (($TYPE == 2));then
-    python3 paradox_stress.py -m processAll -n 100000 -bps $BPS -dw true
+    python3 stress.py -m processAll -n 100000 -bps $BPS -dw true
   fi
 fi
 
 if (($SET == 3));then
   cd set3_50k
   if (($TYPE == 1));then
-    python3 paradox_stress.py -m buildAll -n 50000 -bps $BPS
+    python3 stress.py -m buildAll -n 50000 -bps $BPS
   fi
   if (($TYPE == 2));then
-    python3 paradox_stress.py -m processAll -n 50000 -bps $BPS -dw true
+    python3 stress.py -m processAll -n 50000 -bps $BPS -dw true
   fi
 fi
 
 if (($SET == 4));then
   cd set4_25k
   if (($TYPE == 1));then
-    python3 paradox_stress.py -m buildAll -n 25000 -bps $BPS
+    python3 stress.py -m buildAll -n 25000 -bps $BPS
   fi
   if (($TYPE == 2));then
-    python3 paradox_stress.py -m processAll -n 25000 -bps $BPS -dw true
+    python3 stress.py -m processAll -n 25000 -bps $BPS -dw true
   fi
 fi
 
 if (($SET == 5));then
   cd set5_150k
   if (($TYPE == 1));then
-    python3 paradox_stress.py -m buildAll -n 150000 -bps $BPS
+    python3 stress.py -m buildAll -n 150000 -bps $BPS
   fi
   if (($TYPE == 2));then
-    python3 paradox_stress.py -m processAll -n 150000 -bps $BPS -dw true
+    python3 stress.py -m processAll -n 150000 -bps $BPS -dw true
   fi
 fi
