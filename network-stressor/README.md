@@ -17,9 +17,9 @@ and building 10 nano accounts.
 
 1. `-n` - Number of accounts used for testing
 2. `-s` - Size of each transaction in RAW, default is 10 RAW
-3. `-sn` - Save blocks or accounts to disk how often, default is every 1000 blocks or accounts
+3. `-sn` - Save blocks or accounts to disk how often, default is every 10,000 blocks or accounts
 4. `-r` - Representative to use, default is a testing rep
-5. `-bps` - Throttle blocks per second during processing, default is 1000
+5. `-bps` - Throttle blocks per second during processing, default is 1,000
 6. `-m` - define what mode you would like to use
 7. `-nu` - url of the nano node that you would like to use, default is `[::1]`
 8. `-np` - port of the nano node that you would like to use, default is `7076`
@@ -29,7 +29,7 @@ and building 10 nano accounts.
 10. `slam` - Variable TPS throttle, default is `False`
 11. `slam_time` - Define how often slam is decided, default `20` for 20 seconds
 11. `ss` - Save blocks to disk during the seedAccounts process, default is `False`
-12. `dw` - Disable watch_work feature for RPC process (v20 needed)
+12. `dw` - Disable watch_work feature for RPC process
 13. `al` - How many times to run the autoOnce mode. 1 (default)
 
 Slam will not work unless `-bps` argument is specified. Slam is weighted towards the specified tps amount but it is randomly decided.
@@ -48,6 +48,7 @@ Slam will not work unless `-bps` argument is specified. Slam is weighted towards
 10. `countAccounts` - return number of accounts built
 11. `recover` - receive all pending blocks for every account, build a batch of send blocks and process send blocks
 12. `repair` - sort seed history from ledger and save to `accounts.json` file
+12. `benchmark` - completes a full block cycle from start to finish
 
 ## notes - please read
 
