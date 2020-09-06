@@ -26,11 +26,9 @@ and building 10 nano accounts.
 7. `-wu` - url of the nano work server that you would like to use, default is value of `-nu`
 8. `-wp` - port of the nano work server that you would like to use, default is value of `-np`
 9. `-z` - provide zero proof of work, default is `False`
-10. `slam` - Variable TPS throttle, default is `False`
-11. `slam_time` - Define how often slam is decided, default `20` for 20 seconds
-11. `ss` - Save blocks to disk during the seedAccounts process, default is `False`
-12. `dw` - Disable watch_work feature for RPC process
-13. `al` - How many times to run the autoOnce mode. 1 (default)
+10. `ss` - Save blocks to disk during the seedAccounts process, default is `False`
+11. `dw` - Disable watch_work feature for RPC process
+12. `al` - How many times to run the autoOnce mode. 1 (default)
 
 Slam will not work unless `-bps` argument is specified. Slam is weighted towards the specified tps amount but it is randomly decided.
 
