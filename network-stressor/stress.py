@@ -22,12 +22,10 @@ parser.add_argument('-sn', '--save_num', type=int, help='Save blocks to disk how
 parser.add_argument('-r', '--representative', type=str, help='Representative to use', default='nano_1paradoxtestingxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxw5qzjpw3')
 parser.add_argument('-bps', '--bps', type=float, help='Throttle blocks per second during processing. 1000 (default).', default=1000)
 parser.add_argument('-m', '--mode', help='define what mode you would like', required=True, choices=['buildAccounts', 'seedAccounts', 'buildAll', 'buildSend', 'buildReceive', 'processSend', 'processReceive', 'processAll', 'autoOnce', 'countAccounts', 'recover', 'repair', 'benchmark'])
-parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='[::1]')
+parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='127.0.0.1')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=7076)
 parser.add_argument('-z', '--zero_work', type=str, help='Submits empty work', default='False')
 parser.add_argument('-ss', '--save_seed', type=str, help='Save to file during initial seeding', default='False')
-parser.add_argument('-dw', '--disable_watch_work', type=str, help='Disable watch_work feature for RPC process', default='False')
-parser.add_argument('-al', '--auto_loops', type=int, help='How many times to run the autoOnce mode. 1 (default)', default=1)
 parser.add_argument('-wu', '--work_url', type=str, help='Nano work url')
 parser.add_argument('-wp', '--work_port', type=int, help='Nano work port')
 options = parser.parse_args()
@@ -182,10 +180,7 @@ async def getHistory(account, count='10'):
 async def process(block):
     if 'block' in block:
         block = block['block']
-    if options.disable_watch_work == 'true':
-        return await communicateNode({'action': 'process', 'block': block, 'watch_work': False})
-    else:
-        return await communicateNode({'action': 'process', 'block': block})
+    return await communicateNode({'action': 'process', 'block': block})
 
 async def getInfo(account):
     return await communicateNode({'action': 'account_info', 'account': account, 'count': 1, 'pending': True})
@@ -647,13 +642,10 @@ async def buildAll():
     print('Built ' + str(buildReceiveCount) + ' receive blocks and ' + str(buildSendCount) + ' send blocks')
 
 async def autoOnce():
-    loops = options.auto_loops
-    while loops > 0:
-        # build all blocks
-        await buildAll()
-        # process all blocks
-        await processAll()
-        loops -= 1
+    # build all blocks
+    await buildAll()
+    # process all blocks
+    await processAll()
 
 # recover single account
 async def recover(account):
