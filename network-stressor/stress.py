@@ -12,7 +12,7 @@ from collections import defaultdict
 import asyncio
 import async_timeout
 import math
-from nanolib import Block, get_account_key_pair
+from nanolib import Block, get_account_key_pair, generate_seed, generate_account_key_pair, get_account_id
 
 parser = argparse.ArgumentParser(
     description='Paradox stress testing tool for NANO network. Sends 10 raw each to itself')
@@ -168,8 +168,11 @@ def saveAccounts():
     print('\n(SAVE) Accounts have been written to accounts.json\n')
 
 # generate new key pair
-async def getKeyPair():
-    return await communicateNode({'action': 'key_create'})
+def getKeyPair():
+    seed = generate_seed()
+    pair = generate_account_key_pair(seed, 0)
+    account = get_account_id(private_key=pair.private, prefix="nano_")
+    return {"private": pair.private, "account": account}
 
 async def getPending(account):
     return await communicateNode({'action':'pending', 'account': account, 'count': '10'})
@@ -257,7 +260,7 @@ async def buildAccounts():
     i = 0
     for x in range(keyNum):
         i = (i + 1)
-        newKey = await getKeyPair()
+        newKey = getKeyPair()
         accountObject = {'key': newKey['private'], 'seeded': False}
         accounts['accounts'][newKey['account']] = accountObject
 
